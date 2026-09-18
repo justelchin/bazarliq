@@ -1,553 +1,96 @@
-<!DOCTYPE html>
-<html lang="az">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QaiməOxuyan & Bazarlıq Sistemi</title>
+/**
+ * Rəsmi 18-Sütunlu e-Qaimə PDF Parseri
+ */
+async function parseOfficialEQaimePdf(file) {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
-    <!-- Tailwind CSS & FontAwesome -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    let invoiceNo = "";
+    let invoiceDate = "";
+    let supplierName = "ARAZ SUPERMARKET MMC";
+    let items = [];
 
-    <!-- PDF.js & SheetJS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const textContent = await page.getTextContent();
+        
+        // Mətni y-oxuna görə sətirlərə qruplaşdırırıq
+        const yTolerance = 5.0;
+        let rowsMap = new Map();
 
-    <script>
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        textContent.items.forEach(item => {
+            const str = item.str.trim();
+            if (!str) return;
 
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        brand: {
-                            50: '#f0f9ff',
-                            100: '#e0f2fe',
-                            500: '#0284c7',
-                            600: '#0369a1',
-                            700: '#075985',
-                        }
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-    </style>
-</head>
-<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+            const x = item.transform[4];
+            const y = item.transform[5];
 
-    <!-- Header -->
-    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16 items-center">
-                <div class="flex items-center space-x-3">
-                    <div class="bg-brand-600 text-white p-2.5 rounded-xl shadow-sm">
-                        <i class="fa-solid fa-file-invoice-dollar text-xl"></i>
-                    </div>
-                    <div>
-                        <h1 class="font-bold text-lg text-slate-900 leading-tight">QaiməOxuyan & Bazarlıq Sistemi</h1>
-                        <p class="text-xs text-slate-500">Elektron Qaimə-Faktura (e-Qaimə) və Excel Təhlil Portalı</p>
-                    </div>
-                </div>
-                <div class="flex items-center space-x-3">
-                    <button onclick="exportMasterExcel()" class="inline-flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition shadow-sm">
-                        <i class="fa-solid fa-file-excel"></i>
-                        <span>Excel İxraca Göndər</span>
-                    </button>
-                    <button onclick="clearAllData()" class="text-slate-500 hover:text-red-600 p-2 rounded-lg hover:bg-slate-100 transition" title="Təmizlə">
-                        <i class="fa-solid fa-trash-can text-lg"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </header>
-
-    <!-- Main Container -->
-    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-
-        <!-- Upload Dropzone -->
-        <section class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-            <div id="drop-zone" class="border-2 border-dashed border-slate-300 hover:border-brand-500 rounded-xl p-8 text-center bg-slate-50/50 hover:bg-brand-50/30 transition cursor-pointer flex flex-col items-center justify-center relative">
-                <input type="file" id="file-input" multiple accept=".pdf, .xlsx, .xls" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="handleFileSelect(event)">
-                
-                <div class="w-14 h-14 bg-brand-50 text-brand-600 rounded-full flex items-center justify-center mb-3 text-2xl shadow-inner">
-                    <i class="fa-solid fa-cloud-arrow-up"></i>
-                </div>
-                <h3 class="text-base font-semibold text-slate-800 mb-1">
-                    Elektron Qaimə (PDF) və ya Excel fayllarını buraya atın
-                </h3>
-                <p class="text-xs text-slate-500 mb-4">
-                    Təmiz adlar, tam hesablanmış vahid qiymətləri və dəqiq məbləğlər.
-                </p>
-                <span class="inline-flex items-center space-x-2 text-xs font-medium text-brand-600 bg-white border border-brand-200 px-3 py-1.5 rounded-lg shadow-sm">
-                    <i class="fa-solid fa-folder-open"></i>
-                    <span>Fayl Seçin</span>
-                </span>
-            </div>
-
-            <div id="parsing-status" class="hidden mt-4 p-3 bg-brand-50 border border-brand-200 text-brand-700 text-sm rounded-xl flex items-center justify-between">
-                <div class="flex items-center space-x-3">
-                    <i class="fa-solid fa-spinner animate-spin text-brand-600"></i>
-                    <span id="parsing-status-text">Fayllar analiz edilir...</span>
-                </div>
-            </div>
-        </section>
-
-        <!-- KPI Metrics -->
-        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
-                <div>
-                    <p class="text-xs font-medium text-slate-500 uppercase">CƏMİ MƏHSUL NÖVÜ</p>
-                    <h4 id="kpi-unique-products" class="text-2xl font-bold text-slate-800 mt-1">0</h4>
-                </div>
-                <div class="w-10 h-10 bg-purple-50 text-purple-600 rounded-lg flex items-center justify-center text-lg">
-                    <i class="fa-solid fa-tags"></i>
-                </div>
-            </div>
-            <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
-                <div>
-                    <p class="text-xs font-medium text-slate-500 uppercase">ÜMUMİ YEKUN DƏYƏR</p>
-                    <h4 id="kpi-total-amount" class="text-2xl font-bold text-emerald-600 mt-1">0.00 ₼</h4>
-                </div>
-                <div class="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center text-lg">
-                    <i class="fa-solid fa-manat-sign"></i>
-                </div>
-            </div>
-            <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
-                <div>
-                    <p class="text-xs font-medium text-slate-500 uppercase">TƏCHİZATÇI SAYI</p>
-                    <h4 id="kpi-supplier-count" class="text-2xl font-bold text-slate-800 mt-1">0</h4>
-                </div>
-                <div class="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-lg">
-                    <i class="fa-solid fa-truck"></i>
-                </div>
-            </div>
-            <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
-                <div>
-                    <p class="text-xs font-medium text-slate-500 uppercase">OXUNMUŞ QAİMƏLƏR</p>
-                    <h4 id="kpi-invoice-count" class="text-2xl font-bold text-slate-800 mt-1">0</h4>
-                </div>
-                <div class="w-10 h-10 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center text-lg">
-                    <i class="fa-solid fa-file-invoice"></i>
-                </div>
-            </div>
-        </section>
-
-        <!-- Tables Section -->
-        <section class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-            
-            <div class="p-4 border-b border-slate-200 bg-slate-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div class="flex bg-slate-200/70 p-1 rounded-xl">
-                    <button id="tab-btn-master" onclick="switchTab('master')" class="px-4 py-2 rounded-lg text-xs font-bold transition bg-white text-slate-800 shadow-sm">
-                        Sətirbəsətir Məhsul Siyahısı
-                    </button>
-                    <button id="tab-btn-summary" onclick="switchTab('summary')" class="px-4 py-2 rounded-lg text-xs font-bold transition text-slate-600 hover:text-slate-900">
-                        Avtomatik Xülasə (Qruplaşdırılmış)
-                    </button>
-                </div>
-
-                <div class="flex items-center space-x-3">
-                    <input type="text" id="table-search" oninput="applyFilters()" placeholder="Məhsul adı axtar..." class="px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
-                    <select id="supplier-filter" onchange="applyFilters()" class="py-1.5 px-3 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
-                        <option value="">Bütün Təchizatçılar</option>
-                    </select>
-                </div>
-            </div>
-
-            <!-- Table 1: Master List -->
-            <div id="tab-content-master" class="overflow-x-auto custom-scrollbar flex-1">
-                <table class="w-full text-left border-collapse text-xs">
-                    <thead>
-                        <tr class="bg-slate-100/80 text-slate-600 font-semibold uppercase tracking-wider border-b border-slate-200">
-                            <th class="py-3 px-4">Tarix</th>
-                            <th class="py-3 px-4">Təchizatçı</th>
-                            <th class="py-3 px-4">Qaimə Nüm / Seriya</th>
-                            <th class="py-3 px-4">MALIN ADI</th>
-                            <th class="py-3 px-4 text-center">Vahid</th>
-                            <th class="py-3 px-4 text-right">Miqdar</th>
-                            <th class="py-3 px-4 text-right">Bir Vahid Satış Qiyməti</th>
-                            <th class="py-3 px-4 text-right">Yekun Dəyər</th>
-                        </tr>
-                    </thead>
-                    <tbody id="master-table-body" class="divide-y divide-slate-100 text-slate-700">
-                        <tr>
-                            <td colspan="8" class="py-12 text-center text-slate-400">
-                                Siyahı boşdur. Məlumat almaq üçün faylları yuxarıya sürüyün.
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Table 2: Summary List -->
-            <div id="tab-content-summary" class="hidden overflow-x-auto custom-scrollbar flex-1">
-                <table class="w-full text-left border-collapse text-xs">
-                    <thead>
-                        <tr class="bg-slate-100/80 text-slate-600 font-semibold uppercase tracking-wider border-b border-slate-200">
-                            <th class="py-3 px-4">#</th>
-                            <th class="py-3 px-4">MALIN ADI</th>
-                            <th class="py-3 px-4 text-center">Vahid</th>
-                            <th class="py-3 px-4 text-right">Cəmi Miqdar</th>
-                            <th class="py-3 px-4 text-right">Orta Qiymət</th>
-                            <th class="py-3 px-4 text-right">Ümumi Məbləğ</th>
-                        </tr>
-                    </thead>
-                    <tbody id="summary-table-body" class="divide-y divide-slate-100 text-slate-700">
-                        <tr>
-                            <td colspan="6" class="py-12 text-center text-slate-400">
-                                Qruplaşdırılmış xülasə məlumatı tapılmadı.
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Footer Stats -->
-            <div class="p-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center text-xs font-semibold text-slate-700">
-                <span id="records-counter">Göstərilən sətir sayı: 0</span>
-                <div>Cəmi Məbləğ: <strong id="footer-total-amount" class="text-brand-600 text-sm font-bold">0.00 ₼</strong></div>
-            </div>
-
-        </section>
-
-    </main>
-
-    <!-- JS Logic -->
-    <script>
-        let masterData = [];
-
-        async function handleFileSelect(event) {
-            const files = event.target.files || event.dataTransfer.files;
-            if (!files || files.length === 0) return;
-
-            showParsingStatus(true, "Qaimələr analiz edilir...");
-
-            for (let file of files) {
-                const fileName = file.name.toLowerCase();
-                try {
-                    if (fileName.endsWith('.pdf')) {
-                        await parsePdfSmartPrice(file);
-                    } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
-                        await parseExcelInvoice(file);
-                    }
-                } catch (error) {
-                    console.error("Xəta baş verdi:", file.name, error);
-                }
+            // Seriya/Nömrə və Tarix tespiti
+            if (str.includes("Seriya:")) {
+                const match = pageText.match(/MT\d+/);
+                if (match) invoiceNo = match[0];
             }
 
-            showParsingStatus(false);
-            updateDashboard();
-            document.getElementById('file-input').value = '';
-        }
-
-        /**
-         * Advanced PDF Parser with Auto-Calculated Unit Price & Clean Product Titles
-         */
-        async function parsePdfSmartPrice(file) {
-            const arrayBuffer = await file.arrayBuffer();
-            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-
-            let supplierName = "ARAZ SUPERMARKET MMC";
-            let invoiceNo = "MT260812347012";
-            let invoiceDate = new Date().toISOString().split('T')[0];
-
-            for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-                const page = await pdf.getPage(pageNum);
-                const textContent = await page.getTextContent();
-                
-                // Group by Y-position
-                const yTolerance = 4.0;
-                let rows = [];
-
-                textContent.items.forEach(item => {
-                    const str = item.str.trim();
-                    if (!str) return;
-
-                    const x = item.transform[4];
-                    const y = item.transform[5];
-
-                    if (str.includes("ARAZ") || str.includes("SUPERMARKET")) supplierName = "ARAZ SUPERMARKET MMC";
-                    if (str.match(/\d{2}\.\d{2}\.\d{4}/)) {
-                        const m = str.match(/\d{2}\.\d{2}\.\d{4}/);
-                        if (m) invoiceDate = m[0];
-                    }
-                    if (str.match(/MT\d+/i)) invoiceNo = str;
-
-                    let row = rows.find(r => Math.abs(r.y - y) < yTolerance);
-                    if (!row) {
-                        row = { y: y, items: [] };
-                        rows.push(row);
-                    }
-                    row.items.push({ x: x, str: str });
-                });
-
-                rows.sort((a, b) => b.y - a.y);
-
-                rows.forEach(r => {
-                    r.items.sort((a, b) => a.x - b.x);
-                    const lineText = r.items.map(i => i.str).join(' ');
-
-                    if (
-                        lineText.includes("VÖEN") || lineText.includes("Seriya") || 
-                        lineText.includes("Sıra") || lineText.includes("Cəmi") || 
-                        lineText.includes("Yekun") || lineText.includes("1 2 3 4") ||
-                        lineText.match(/^[\d\.\s]+$/)
-                    ) {
-                        return;
-                    }
-
-                    // Separate words and numbers
-                    let textParts = [];
-                    let numbers = [];
-
-                    r.items.forEach(item => {
-                        const val = item.str.replace(',', '.');
-                        if (!isNaN(val) && val !== '') {
-                            numbers.push(parseFloat(val));
-                        } else {
-                            textParts.push(item.str);
-                        }
-                    });
-
-                    let rawName = textParts.join(' ');
-                    
-                    // Clean product name duplicates ("ƏDƏD ƏDƏD", prefixes, codes)
-                    let cleanTitle = rawName
-                        .replace(/^\d+\s+/, '')
-                        .replace(/\b(ƏDƏD|KG|KQ)\b/gi, '')
-                        .replace(/\s+/g, ' ')
-                        .trim();
-
-                    if (cleanTitle.length > 2 && numbers.length >= 1) {
-                        let totalAmount = numbers[numbers.length - 1] || 0;
-                        let unitPrice = numbers.length >= 3 ? numbers[numbers.length - 2] : 0;
-                        let quantity = numbers.length >= 3 ? numbers[numbers.length - 3] : 1;
-
-                        // Fix: If quantity looks like tax percentage (e.g. 0.0575, 0.0197), reset quantity
-                        if (quantity < 0.1 && totalAmount > 0) {
-                            quantity = 1;
-                        }
-
-                        // Auto Calculate Unit Price if it is 0.0000
-                        if (unitPrice === 0 && totalAmount > 0 && quantity > 0) {
-                            unitPrice = totalAmount / quantity;
-                        }
-
-                        let unit = "ƏDƏD";
-                        if (cleanTitle.toLowerCase().includes("kg") || cleanTitle.toLowerCase().includes("xiyar") || cleanTitle.toLowerCase().includes("sogan") || cleanTitle.toLowerCase().includes("pomidor")) {
-                            unit = "KG";
-                        }
-
-                        masterData.push({
-                            id: Date.now() + Math.random(),
-                            date: invoiceDate,
-                            invoiceNo: invoiceNo,
-                            supplier: supplierName,
-                            productName: cleanTitle,
-                            unit: unit,
-                            quantity: quantity,
-                            unitPrice: unitPrice,
-                            totalAmount: totalAmount
-                        });
-                    }
-                });
+            let foundY = Array.from(rowsMap.keys()).find(k => Math.abs(k - y) < yTolerance);
+            if (!foundY) {
+                foundY = y;
+                rowsMap.set(foundY, []);
             }
-        }
+            rowsMap.get(foundY).push({ x, str });
+        });
 
-        async function parseExcelInvoice(file) {
-            const data = await file.arrayBuffer();
-            const workbook = XLSX.read(data, { type: 'array' });
-            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-            const jsonRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        // Sətirləri yuxarıdan aşağıya sıralayırıq
+        const sortedY = Array.from(rowsMap.keys()).sort((a, b) => b - a);
 
-            let supplier = file.name.replace(/\.[^/.]+$/, "");
-            let date = new Date().toISOString().split('T')[0];
+        sortedY.forEach(y => {
+            const rowItems = rowsMap.get(y).sort((a, b) => a.x - b.x);
+            const lineStr = rowItems.map(i => i.str).join(" ");
 
-            jsonRows.forEach(row => {
-                if (!row || row.length === 0) return;
-                let rawTitle = row.find(cell => typeof cell === 'string' && cell.trim().length > 3 && !cell.toLowerCase().includes('cəmi'));
-                if (rawTitle) {
-                    let numbers = row.filter(cell => typeof cell === 'number' || (!isNaN(cell) && cell !== ''));
-                    let qty = parseFloat(numbers[0]) || 1;
-                    let price = parseFloat(numbers[1]) || 0;
-                    let total = parseFloat(numbers[2]) || (qty * price);
+            // Başlıq və yekun sətirlərini ötürük
+            if (lineStr.includes("Sıra №") || lineStr.includes("Cəmi") || lineStr.includes("Yekun məbləğ")) return;
 
-                    if (price === 0 && total > 0 && qty > 0) price = total / qty;
+            // 10 rəqəmli Malın Kodunu axtarırıq (Sütun 3)
+            const parts = lineStr.split(/\s+/);
+            const kodIdx = parts.findIndex(p => /^\d{10}$/.test(p));
 
-                    masterData.push({
-                        id: Date.now() + Math.random(),
-                        date: date,
-                        invoiceNo: "EXCEL-IMPORT",
-                        supplier: supplier,
-                        productName: rawTitle.trim(),
-                        unit: "ƏDƏD",
-                        quantity: qty,
-                        unitPrice: price,
-                        totalAmount: total
+            if (kodIdx > 0) {
+                // Sütun 2: Malın Adı (Sıra №-sindən sonra Koda qədər)
+                const nameParts = parts.slice(1, kodIdx);
+                const rawName = nameParts.join(" ");
+
+                // Sütun 5: Ölçü vahidi (Kod və GTİN-dən sonrakı)
+                const unit = parts[kodIdx + 2] || "ƏDƏD";
+
+                // Sütun 6 və sonrakı bütün rəqəm dəyərləri
+                const numbers = parts.slice(kodIdx + 3)
+                                     .map(v => parseFloat(v.replace(',', '.')))
+                                     .filter(v => !isNaN(v));
+
+                if (numbers.length >= 3) {
+                    const quantity = numbers[0];         // Sütun 6: Miqdar
+                    let unitPrice = numbers[1];          // Sütun 7: Vahid Satış Qiyməti
+                    const amountNoVat = numbers[2];      // Sütun 8: Cəmi məbləğ
+                    const vatAmount = numbers.length >= 13 ? numbers[numbers.length - 3] : 0; // Sütun 16: ƏDV
+                    const finalTotal = numbers[numbers.length - 1]; // Sütun 18: Yekun məbləğ
+
+                    // Əgər Vahid Qiyməti 0-dırsa, riyazi olaraq Cəmi Məbləğ / Miqdar hesablanır
+                    if (unitPrice === 0 && quantity > 0) {
+                        unitPrice = amountNoVat / quantity;
+                    }
+
+                    items.push({
+                        productName: rawName,
+                        unit: unit,
+                        quantity: quantity,
+                        unitPrice: unitPrice,
+                        amountNoVat: amountNoVat,
+                        vatAmount: vatAmount,
+                        finalTotal: finalTotal
                     });
                 }
-            });
-        }
-
-        function updateDashboard() {
-            populateSupplierFilter();
-            renderTables();
-            updateKPIs();
-        }
-
-        function populateSupplierFilter() {
-            const select = document.getElementById('supplier-filter');
-            const currentVal = select.value;
-            const suppliers = [...new Set(masterData.map(item => item.supplier))];
-
-            select.innerHTML = '<option value="">Bütün Təchizatçılar</option>';
-            suppliers.forEach(sup => {
-                const opt = document.createElement('option');
-                opt.value = sup;
-                opt.textContent = sup;
-                select.appendChild(opt);
-            });
-            select.value = currentVal;
-        }
-
-        function updateKPIs() {
-            const invoices = new Set(masterData.map(i => i.invoiceNo));
-            const suppliers = new Set(masterData.map(i => i.supplier));
-            const uniqueProds = new Set(masterData.map(i => i.productName.toLowerCase()));
-            const totalSum = masterData.reduce((acc, curr) => acc + (curr.totalAmount || 0), 0);
-
-            document.getElementById('kpi-invoice-count').textContent = invoices.size;
-            document.getElementById('kpi-supplier-count').textContent = suppliers.size;
-            document.getElementById('kpi-unique-products').textContent = uniqueProds.size;
-            document.getElementById('kpi-total-amount').textContent = totalSum.toFixed(2) + ' ₼';
-        }
-
-        function renderTables() {
-            const searchTerm = document.getElementById('table-search').value.toLowerCase();
-            const selectedSupplier = document.getElementById('supplier-filter').value;
-
-            const filteredData = masterData.filter(item => {
-                const matchesSearch = item.productName.toLowerCase().includes(searchTerm) ||
-                                     item.invoiceNo.toLowerCase().includes(searchTerm);
-                const matchesSupplier = !selectedSupplier || item.supplier === selectedSupplier;
-                return matchesSearch && matchesSupplier;
-            });
-
-            // Master table
-            const masterBody = document.getElementById('master-table-body');
-            if (filteredData.length === 0) {
-                masterBody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-slate-400">Məlumat tapılmadı.</td></tr>`;
-            } else {
-                masterBody.innerHTML = filteredData.map(item => `
-                    <tr class="hover:bg-slate-50 transition border-b border-slate-100">
-                        <td class="py-2.5 px-4 text-slate-500 font-mono text-[11px]">${item.date}</td>
-                        <td class="py-2.5 px-4 font-semibold text-slate-800">${item.supplier}</td>
-                        <td class="py-2.5 px-4 text-brand-600 font-mono">${item.invoiceNo}</td>
-                        <td class="py-2.5 px-4 font-bold text-slate-900">${item.productName}</td>
-                        <td class="py-2.5 px-4 text-center text-slate-500">${item.unit}</td>
-                        <td class="py-2.5 px-4 text-right font-mono">${item.quantity}</td>
-                        <td class="py-2.5 px-4 text-right font-mono font-semibold text-brand-600">${item.unitPrice.toFixed(4)} ₼</td>
-                        <td class="py-2.5 px-4 text-right font-semibold text-slate-900 font-mono">${item.totalAmount.toFixed(2)} ₼</td>
-                    </tr>
-                `).join('');
             }
+        });
+    }
 
-            // Summary Table
-            const summaryMap = {};
-            filteredData.forEach(item => {
-                const key = item.productName.trim().toUpperCase();
-                if (!summaryMap[key]) {
-                    summaryMap[key] = { name: item.productName, unit: item.unit, qty: 0, total: 0 };
-                }
-                summaryMap[key].qty += item.quantity;
-                summaryMap[key].total += item.totalAmount;
-            });
-
-            const summaryList = Object.values(summaryMap);
-            const summaryBody = document.getElementById('summary-table-body');
-
-            if (summaryList.length === 0) {
-                summaryBody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-slate-400">Məlumat tapılmadı.</td></tr>`;
-            } else {
-                summaryBody.innerHTML = summaryList.map((sum, index) => `
-                    <tr class="hover:bg-slate-50 transition border-b border-slate-100">
-                        <td class="py-2.5 px-4 text-slate-400 font-mono text-[11px]">${index + 1}</td>
-                        <td class="py-2.5 px-4 font-bold text-slate-900">${sum.name}</td>
-                        <td class="py-2.5 px-4 text-center text-slate-500">${sum.unit}</td>
-                        <td class="py-2.5 px-4 text-right font-mono font-bold text-brand-600">${sum.qty}</td>
-                        <td class="py-2.5 px-4 text-right font-mono">${(sum.qty > 0 ? sum.total / sum.qty : 0).toFixed(4)} ₼</td>
-                        <td class="py-2.5 px-4 text-right font-semibold text-slate-900 font-mono">${sum.total.toFixed(2)} ₼</td>
-                    </tr>
-                `).join('');
-            }
-
-            const totalSum = filteredData.reduce((acc, curr) => acc + curr.totalAmount, 0);
-            document.getElementById('footer-total-amount').textContent = totalSum.toFixed(2) + ' ₼';
-            document.getElementById('records-counter').textContent = `Göstərilən sətir sayı: ${filteredData.length}`;
-        }
-
-        function switchTab(tab) {
-            const btnMaster = document.getElementById('tab-btn-master');
-            const btnSummary = document.getElementById('tab-btn-summary');
-            const contentMaster = document.getElementById('tab-content-master');
-            const contentSummary = document.getElementById('tab-content-summary');
-
-            if (tab === 'master') {
-                btnMaster.className = "px-4 py-2 rounded-lg text-xs font-bold transition bg-white text-slate-800 shadow-sm";
-                btnSummary.className = "px-4 py-2 rounded-lg text-xs font-bold transition text-slate-600 hover:text-slate-900";
-                contentMaster.classList.remove('hidden');
-                contentSummary.classList.add('hidden');
-            } else {
-                btnSummary.className = "px-4 py-2 rounded-lg text-xs font-bold transition bg-white text-slate-800 shadow-sm";
-                btnMaster.className = "px-4 py-2 rounded-lg text-xs font-bold transition text-slate-600 hover:text-slate-900";
-                contentSummary.classList.remove('hidden');
-                contentMaster.classList.add('hidden');
-            }
-        }
-
-        function applyFilters() { renderTables(); }
-
-        function exportMasterExcel() {
-            if (masterData.length === 0) return alert("Yükləmək üçün məlumat yoxdur!");
-            const exportData = masterData.map((item, idx) => ({
-                "№": idx + 1,
-                "Tarix": item.date,
-                "Təchizatçı": item.supplier,
-                "Qaimə Nömrəsi": item.invoiceNo,
-                "Malın Adı": item.productName,
-                "Ölçü Vahidi": item.unit,
-                "Miqdar": item.quantity,
-                "Vahid Qiyməti (AZN)": item.unitPrice,
-                "Yekun Məbləğ (AZN)": item.totalAmount
-            }));
-            const worksheet = XLSX.utils.json_to_sheet(exportData);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Qaimə Malları");
-            XLSX.writeFile(workbook, `Qaime_Hesabati_${new Date().toISOString().split('T')[0]}.xlsx`);
-        }
-
-        function clearAllData() {
-            if (masterData.length > 0 && confirm("Bütün məlumatlar silinsin?")) {
-                masterData = [];
-                updateDashboard();
-            }
-        }
-
-        function showParsingStatus(show, text = "") {
-            const el = document.getElementById('parsing-status');
-            const txt = document.getElementById('parsing-status-text');
-            if (show) { txt.textContent = text; el.classList.remove('hidden'); }
-            else { el.classList.add('hidden'); }
-        }
-    </script>
-</body>
-</html>
+    return items;
+}
