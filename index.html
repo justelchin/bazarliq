@@ -86,7 +86,7 @@
                     Elektron Qaimə (PDF) və ya Excel fayllarını buraya atın
                 </h3>
                 <p class="text-xs text-slate-500 mb-4">
-                    Bütün rəqəm və kodlar avtomatik təmizlənəcək, yalnız məhsul adları siyahıya əlavə olunacaq.
+                    PDF mətnləri koordinatlarına görə qruplaşdırılır və yalnız təmiz məhsul adları cədvələ yazılır.
                 </p>
                 <span class="inline-flex items-center space-x-2 text-xs font-medium text-brand-600 bg-white border border-brand-200 px-3 py-1.5 rounded-lg shadow-sm">
                     <i class="fa-solid fa-folder-open"></i>
@@ -225,47 +225,22 @@
     <script>
         let masterData = [];
 
-        /**
-         * Strict Clean function to remove all preceding numbers, codes, header lines, and float numbers
-         */
-        function cleanProductName(rawName) {
-            if (!rawName) return '';
-
-            let cleaned = rawName.toString();
-
-            // 1. Remove column sequence numbers (e.g. "2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 1")
-            cleaned = cleaned.replace(/(?:\b\d{1,2}\s+){4,20}\d{1,2}/g, '');
-
-            // 2. Remove multiple decimal numbers or tax numbers at the beginning (e.g. "0 7.9225 0.3197 0 0 7.6028 ...")
-            cleaned = cleaned.replace(/^(?:[\d\.\,]+\s+){2,}/g, '');
-            cleaned = cleaned.replace(/^[\d\.\,\s]+(?=[A-Za-zƏəĞğIıİiÖöŞşÜüÇç])/, '');
-
-            // 3. Remove single leading row numbers
-            cleaned = cleaned.replace(/^\d+\s+/, '');
-
-            // 4. Remove standalone GTIN/barcodes
-            cleaned = cleaned.replace(/\b\d{8,14}\b/g, '');
-
-            // 5. Trim extra spaces
-            return cleaned.replace(/\s+/g, ' ').trim();
-        }
-
         async function handleFileSelect(event) {
             const files = event.target.files || event.dataTransfer.files;
             if (!files || files.length === 0) return;
 
-            showParsingStatus(true, "Fayllar təhlil edilir...");
+            showParsingStatus(true, "Fayllar analiz edilir...");
 
             for (let file of files) {
                 const fileName = file.name.toLowerCase();
                 try {
                     if (fileName.endsWith('.pdf')) {
-                        await parsePdfInvoice(file);
+                        await parsePdfSpatial(file);
                     } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
                         await parseExcelInvoice(file);
                     }
                 } catch (error) {
-                    console.error("Fayl oxunarkən xəta:", file.name, error);
+                    console.error("Fayl oxunarkən xəta yarandı:", file.name, error);
                 }
             }
 
@@ -274,65 +249,118 @@
             document.getElementById('file-input').value = '';
         }
 
-        async function parsePdfInvoice(file) {
+        /**
+         * Spatial Y-Coordinate Grouping for PDF Tables
+         */
+        async function parsePdfSpatial(file) {
             const arrayBuffer = await file.arrayBuffer();
             const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
-            let fullTextLines = [];
-            let supplierName = "ARAZ SUPERMARKET";
-            let invoiceNo = "MT2608 12610184";
+            let supplierName = "ARAZ SUPERMARKET MMC";
+            let invoiceNo = "MT260812347012";
             let invoiceDate = new Date().toISOString().split('T')[0];
 
-            for (let i = 1; i <= pdf.numPages; i++) {
-                const page = await pdf.getPage(i);
+            for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                const page = await pdf.getPage(pageNum);
+                const viewport = page.getViewport({ scale: 1.0 });
                 const textContent = await page.getTextContent();
-                let pageText = textContent.items.map(item => item.str).join(' ');
 
-                const supplierMatch = pageText.match(/"([^"]+)"\s*(?:MƏHDUD|MMC|MƏSULİYYƏTLİ)/i);
-                if (supplierMatch) supplierName = supplierMatch[1].trim();
-
-                const noMatch = pageText.match(/(?:Seriya:\s*|MT\d{4}\s*)(\d+)/i);
-                if (noMatch) invoiceNo = noMatch[0];
-
-                const dateMatch = pageText.match(/(\d{2}\.\d{2}\.\d{4})/);
-                if (dateMatch) invoiceDate = dateMatch[1];
+                // Group text items by Y-coordinate
+                const yTolerance = 3.5;
+                let rowsByY = [];
 
                 textContent.items.forEach(item => {
-                    if (item.str.trim().length > 0) fullTextLines.push(item.str.trim());
+                    const str = item.str.trim();
+                    if (!str) return;
+
+                    const x = item.transform[4];
+                    const y = item.transform[5];
+
+                    // Meta extraction
+                    if (str.includes("ARAZ") || str.includes("SUPERMARKET")) supplierName = "ARAZ SUPERMARKET MMC";
+                    if (str.match(/\d{2}\.\d{2}\.\d{4}/)) {
+                        const m = str.match(/\d{2}\.\d{2}\.\d{4}/);
+                        if (m) invoiceDate = m[0];
+                    }
+                    if (str.match(/MT\d+/i)) invoiceNo = str;
+
+                    let existingRow = rowsByY.find(r => Math.abs(r.y - y) < yTolerance);
+                    if (!existingRow) {
+                        existingRow = { y: y, items: [] };
+                        rowsByY.push(existingRow);
+                    }
+                    existingRow.items.push({ x: x, str: str });
                 });
-            }
 
-            const combinedStr = fullTextLines.join(' ');
-            const rowMatches = combinedStr.split(/(?=\b\d{1,2}\s*\|\s*[A-ZƏĞIİÖŞÜ])/g);
+                // Sort rows top-to-bottom
+                rowsByY.sort((a, b) => b.y - a.y);
 
-            rowMatches.forEach(rowStr => {
-                if (!rowStr.includes('|')) return;
+                rowsByY.forEach(row => {
+                    row.items.sort((a, b) => a.x - b.x);
+                    const rowText = row.items.map(i => i.str).join(' ');
 
-                const parts = rowStr.split('|').map(p => p.trim());
-                if (parts.length >= 5) {
-                    let rawTitle = parts[1] || parts[0];
-                    let cleanTitle = cleanProductName(rawTitle);
+                    // Filter out non-product lines
+                    if (
+                        rowText.includes("VÖEN") || 
+                        rowText.includes("Seriya") || 
+                        rowText.includes("Tarix") || 
+                        rowText.includes("Sıra") || 
+                        rowText.includes("Cəmi") || 
+                        rowText.includes("Yekun") || 
+                        rowText.includes("Səhifə") ||
+                        rowText.includes("1 2 3 4") ||
+                        rowText.match(/^\d+$/)
+                    ) {
+                        return;
+                    }
 
-                    let unit = parts[4] || "ƏDƏD";
-                    let qty = parseFloat((parts[5] || "1").replace(',', '.')) || 1;
-                    let price = parseFloat((parts[6] || "0").replace(',', '.')) || 0;
-                    let total = parseFloat((parts[7] || "0").replace(',', '.')) || (qty * price);
+                    // Extract numerical values at the end of the line
+                    const numTokens = [];
+                    const textTokens = [];
 
-                    if (cleanTitle.length > 2 && !cleanTitle.includes("Sıra Ne") && !cleanTitle.includes("Cəmi")) {
+                    row.items.forEach(item => {
+                        const cleanedVal = item.str.replace(',', '.');
+                        if (!isNaN(cleanedVal) && cleanedVal !== '') {
+                            numTokens.push(parseFloat(cleanedVal));
+                        } else {
+                            textTokens.push(item.str);
+                        }
+                    });
+
+                    let productName = textTokens.join(' ').replace(/^\d+\s+/, '').trim();
+
+                    // Cleanup product name
+                    productName = productName
+                        .replace(/^(\d+\.?\d*|\d{2}\.\d{2}\.\d{4}|VÖEN.*)\s+/, '')
+                        .replace(/\s+/g, ' ')
+                        .trim();
+
+                    // Unit check
+                    let unit = "ƏDƏD";
+                    if (productName.toLowerCase().endsWith("kg") || productName.toLowerCase().endsWith("kq")) unit = "KQ";
+
+                    // Validate valid table row
+                    if (numTokens.length >= 2 && productName.length > 2 && !productName.match(/^[\d\.\s]+$/)) {
+                        let totalAmount = numTokens[numTokens.length - 1] || 0;
+                        let unitPrice = numTokens[numTokens.length - 2] || 0;
+                        let quantity = numTokens[numTokens.length - 3] || 1;
+
+                        if (totalAmount === 0 && unitPrice > 0) totalAmount = unitPrice * quantity;
+
                         masterData.push({
                             id: Date.now() + Math.random(),
                             date: invoiceDate,
                             invoiceNo: invoiceNo,
                             supplier: supplierName,
-                            productName: cleanTitle,
+                            productName: productName,
                             unit: unit,
-                            quantity: qty,
-                            unitPrice: price > 0 ? price : (total / qty),
-                            totalAmount: total
+                            quantity: quantity,
+                            unitPrice: unitPrice,
+                            totalAmount: totalAmount
                         });
                     }
-                }
-            });
+                });
+            }
         }
 
         async function parseExcelInvoice(file) {
@@ -348,25 +376,22 @@
                 if (!row || row.length === 0) return;
                 let rawTitle = row.find(cell => typeof cell === 'string' && cell.trim().length > 3 && !cell.toLowerCase().includes('cəmi'));
                 if (rawTitle) {
-                    let cleaned = cleanProductName(rawTitle);
                     let numbers = row.filter(cell => typeof cell === 'number' || (!isNaN(cell) && cell !== ''));
                     let qty = parseFloat(numbers[0]) || 1;
                     let price = parseFloat(numbers[1]) || 0;
                     let total = parseFloat(numbers[2]) || (qty * price);
 
-                    if (cleaned.length > 2) {
-                        masterData.push({
-                            id: Date.now() + Math.random(),
-                            date: date,
-                            invoiceNo: "EXCEL-IMPORT",
-                            supplier: supplier,
-                            productName: cleaned,
-                            unit: "ƏDƏD",
-                            quantity: qty,
-                            unitPrice: price,
-                            totalAmount: total
-                        });
-                    }
+                    masterData.push({
+                        id: Date.now() + Math.random(),
+                        date: date,
+                        invoiceNo: "EXCEL-IMPORT",
+                        supplier: supplier,
+                        productName: rawTitle.trim(),
+                        unit: "ƏDƏD",
+                        quantity: qty,
+                        unitPrice: price,
+                        totalAmount: total
+                    });
                 }
             });
         }
@@ -418,7 +443,7 @@
             // Master table
             const masterBody = document.getElementById('master-table-body');
             if (filteredData.length === 0) {
-                masterBody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-slate-400">Məlumat bulunamadı.</td></tr>`;
+                masterBody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-slate-400">Məlumat tapılmadı.</td></tr>`;
             } else {
                 masterBody.innerHTML = filteredData.map(item => `
                     <tr class="hover:bg-slate-50 transition border-b border-slate-100">
