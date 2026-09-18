@@ -32,7 +32,6 @@
                             500: '#0284c7',
                             600: '#0369a1',
                             700: '#075985',
-                            900: '#0c4a6e',
                         }
                     },
                     fontFamily: {
@@ -42,367 +41,391 @@
             }
         }
     </script>
-
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .drag-over { border-color: #0284c7 !important; background-color: rgba(2, 132, 199, 0.05) !important; }
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #f1f5f9; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
 
-    <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-40 shadow-md">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <div class="bg-brand-600 p-2 rounded-lg text-white">
-                    <i class="fa-solid me-0 fa-file-invoice-dollar text-xl"></i>
+    <!-- Header / Navbar -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-brand-600 text-white p-2.5 rounded-xl shadow-sm">
+                        <i class="fa-solid fa-file-invoice-dollar text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-lg text-slate-900 leading-tight">Qaimə & İnventar İdarəetmə Sistemi</h1>
+                        <p class="text-xs text-slate-500">Elektron Qaimə (PDF) və Excel Avtomatik Təhlili</p>
+                    </div>
                 </div>
-                <div>
-                    <h1 class="text-lg font-bold leading-tight">QaiməOxuyan & Bazarlıq Sistemi</h1>
-                    <p class="text-xs text-slate-400">Elektron Qaimə-Faktura (e-Qaimə) və Excel Təhlil Portalı</p>
+                <div class="flex items-center space-x-2 sm:space-x-4">
+                    <button id="btn-export-excel" onclick="exportMasterExcel()" class="hidden sm:inline-flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition shadow-sm">
+                        <i class="fa-solid fa-file-excel"></i>
+                        <span>Excel-ə Yüklə</span>
+                    </button>
+                    <button onclick="clearAllData()" class="text-slate-500 hover:text-red-600 p-2 rounded-lg hover:bg-slate-100 transition" title="Məlumatları Təmizlə">
+                        <i class="fa-solid fa-trash-can text-lg"></i>
+                    </button>
                 </div>
-            </div>
-            
-            <div class="flex items-center space-x-2">
-                <button onclick="loadSampleInvoice()" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-semibold text-xs rounded-lg shadow transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-vial"></i>
-                    <span class="hidden sm:inline">Nümunə Qaimə İlə Yoxla</span>
-                </button>
-                <button onclick="clearAllData()" class="px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 text-xs rounded-lg transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-trash-can"></i>
-                    <span class="hidden sm:inline">Sıfırla</span>
-                </button>
             </div>
         </div>
     </header>
 
+    <!-- Main Content Area -->
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        
-        <!-- Drag & Drop Upload Container -->
-        <section class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-            <div id="dropZone" class="border-2 border-dashed border-slate-300 hover:border-brand-500 rounded-xl p-6 sm:p-8 text-center transition-all bg-slate-50 hover:bg-brand-50/30 cursor-pointer relative group">
-                <input type="file" id="fileInput" accept=".pdf, .xlsx, .xls, .csv" class="hidden" multiple onchange="handleFileSelect(event)">
+
+        <!-- Top Drop Area / File Upload Section -->
+        <section class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <div id="drop-zone" class="border-2 border-dashed border-slate-300 hover:border-brand-500 rounded-xl p-8 text-center bg-slate-50/50 hover:bg-brand-50/30 transition cursor-pointer flex flex-col items-center justify-center relative">
+                <input type="file" id="file-input" multiple accept=".pdf, .xlsx, .xls" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="handleFileSelect(event)">
                 
-                <div class="flex flex-col items-center justify-center space-y-3">
-                    <div class="w-14 h-14 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <i class="fa-solid fa-cloud-arrow-up text-2xl"></i>
-                    </div>
-                    <div>
-                        <p class="text-base font-semibold text-slate-700">
-                            Elektron Qaimə (PDF) və ya Excel faylınızı bura atın
-                        </p>
-                        <p class="text-xs text-slate-500 mt-1">
-                            Formatlar: Rəsmi Azərbaycan e-Qaimə PDF (`.pdf`), Excel (`.xlsx`, `.xls`, `.csv`)
-                        </p>
-                    </div>
-                    <div class="flex items-center gap-2 pt-2">
-                        <button onclick="document.getElementById('fileInput').click()" type="button" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-medium text-xs rounded-lg shadow-sm transition">
-                            <i class="fa-solid fa-folder-open mr-1.5"></i> Fayl Seçin
-                        </button>
-                    </div>
+                <div class="w-14 h-14 bg-brand-50 text-brand-600 rounded-full flex items-center justify-center mb-3 text-2xl shadow-inner">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
                 </div>
+                <h3 class="text-base font-semibold text-slate-800 mb-1">
+                    Elektron Qaimə (PDF) və ya Excel fayllarını buraya atın
+                </h3>
+                <p class="text-xs text-slate-500 mb-4 max-w-md">
+                    Azərbaycan Vergilər Xidmətinin rəsmi e-qaimə PDF fayllarını və ya tərkibində məhsul siyahısı olan Excel sənədlərini dəstəkləyir.
+                </p>
+                <span class="inline-flex items-center space-x-2 text-xs font-medium text-brand-600 bg-white border border-brand-200 px-3 py-1.5 rounded-lg shadow-sm">
+                    <i class="fa-solid fa-folder-open"></i>
+                    <span>Kompüterdən Seçin</span>
+                </span>
             </div>
 
-            <!-- Parsing Progress Indicator -->
-            <div id="uploadStatus" class="hidden mt-4 p-3 bg-brand-50 text-brand-700 border border-brand-200 rounded-xl text-xs flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                    <i class="fa-solid fa-spinner fa-spin text-brand-600 text-sm"></i>
-                    <span id="statusText">Fayl oxunur və məhsullar çıxarılır...</span>
+            <!-- Upload status / Progress indicator -->
+            <div id="parsing-status" class="hidden mt-4 p-3 bg-brand-50 border border-brand-200 text-brand-700 text-sm rounded-xl flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <i class="fa-solid fa-spinner animate-spin text-brand-600"></i>
+                    <span id="parsing-status-text">Fayllar təhlil edilir...</span>
                 </div>
             </div>
         </section>
 
-        <!-- Stats Summary Bar -->
-        <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                <div class="text-xs font-medium text-slate-500 uppercase tracking-wider">Cəmi Məhsul Novü</div>
-                <div id="statTotalItems" class="text-2xl font-bold text-slate-800 mt-1">0</div>
-            </div>
-            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                <div class="text-xs font-medium text-slate-500 uppercase tracking-wider">Ümumi Yekun Dəyər</div>
-                <div id="statTotalAmount" class="text-2xl font-bold text-emerald-600 mt-1">0.00 ₼</div>
-            </div>
-            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                <div class="text-xs font-medium text-slate-500 uppercase tracking-wider">Təchizatçı Sayı</div>
-                <div id="statSuppliersCount" class="text-2xl font-bold text-brand-600 mt-1">0</div>
-            </div>
-            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                <div class="text-xs font-medium text-slate-500 uppercase tracking-wider">Oxunmuş Qaimələr</div>
-                <div id="statInvoicesCount" class="text-2xl font-bold text-purple-600 mt-1">0</div>
-            </div>
-        </section>
-
-        <!-- Main Tabbed Dashboard -->
-        <section class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <!-- Navigation Tabs Header -->
-            <div class="border-b border-slate-200 bg-slate-50/50 px-4 pt-3 flex flex-wrap items-center justify-between gap-3">
-                <div class="flex space-x-1 border-b border-transparent">
-                    <button onclick="switchTab('detailed')" id="tabBtnDetailed" class="px-4 py-2.5 text-xs font-semibold rounded-t-lg transition border-b-2 border-brand-600 text-brand-600 bg-white shadow-sm flex items-center gap-2">
-                        <i class="fa-solid fa-list-check"></i>
-                        <span>Sətirbəsətir Məhsul Siyahısı</span>
-                    </button>
-                    <button onclick="switchTab('summary')" id="tabBtnSummary" class="px-4 py-2.5 text-xs font-semibold rounded-t-lg transition border-b-2 border-transparent text-slate-600 hover:text-slate-900 flex items-center gap-2">
-                        <i class="fa-solid fa-chart-pie"></i>
-                        <span>Avtomatik Xülasə (Qruplaşdırılmış)</span>
-                    </button>
+        <!-- KPI Metrics Dashboard Cards -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-500">Ümumi Yüklənmiş Qaimə</p>
+                    <h4 id="kpi-invoice-count" class="text-2xl font-bold text-slate-800 mt-1">0</h4>
                 </div>
-
-                <!-- Export Options -->
-                <div class="flex items-center gap-2 pb-2 sm:pb-0">
-                    <button onclick="exportToExcel()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-lg shadow-sm transition flex items-center gap-1.5">
-                        <i class="fa-solid fa-file-excel"></i>
-                        <span>Excel İxraca Göndər</span>
-                    </button>
-                    <button onclick="window.print()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white text-xs font-medium rounded-lg shadow-sm transition flex items-center gap-1.5">
-                        <i class="fa-solid fa-print"></i>
-                        <span>Çap Et / PDF</span>
-                    </button>
+                <div class="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-lg">
+                    <i class="fa-solid fa-file-invoice"></i>
                 </div>
             </div>
-
-            <!-- Tab 1: Detailed Product List -->
-            <div id="tabDetailedContent" class="p-4 space-y-4">
-                <!-- Filters & Search -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div class="relative">
-                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
-                        <input type="text" id="searchInput" oninput="renderTables()" placeholder="Malın adı və ya koda görə axtar..." class="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none">
-                    </div>
-                    <div>
-                        <select id="supplierFilter" onchange="renderTables()" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none bg-white">
-                            <option value="">Bütün Təchizatçılar</option>
-                        </select>
-                    </div>
-                    <div class="text-right flex items-center justify-end text-xs text-slate-500">
-                        Toplanmış sətir sayı: <span id="filteredCount" class="font-bold text-slate-800 ml-1">0</span>
-                    </div>
+            <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-500">Ümumi Sətir (Məhsul)</p>
+                    <h4 id="kpi-total-items" class="text-2xl font-bold text-slate-800 mt-1">0</h4>
                 </div>
-
-                <!-- Product Table -->
-                <div class="overflow-x-auto border border-slate-200 rounded-xl">
-                    <table class="w-full text-left text-xs text-slate-700">
-                        <thead class="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200 uppercase tracking-wider">
-                            <tr>
-                                <th class="p-3">#</th>
-                                <th class="p-3">Tarix</th>
-                                <th class="p-3">Təchizatçı (Göndərən)</th>
-                                <th class="p-3">Qaimə Nüm / Seriya</th>
-                                <th class="p-3">Malın Adı</th>
-                                <th class="p-3 text-center">Vahid</th>
-                                <th class="p-3 text-right">Miqdar</th>
-                                <th class="p-3 text-right">Bir Vahid Fərdi Satış Qiyməti</th>
-                                <th class="p-3 text-right">Yekun Dəyər</th>
-                                <th class="p-3 text-center">Əməliyyat</th>
-                            </tr>
-                        </thead>
-                        <tbody id="detailedTableBody" class="divide-y divide-slate-200 bg-white">
-                            <!-- Injected JS -->
-                        </tbody>
-                    </table>
+                <div class="w-10 h-10 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center text-lg">
+                    <i class="fa-solid fa-boxes-stacked"></i>
                 </div>
             </div>
-
-            <!-- Tab 2: Consolidated Summary -->
-            <div id="tabSummaryContent" class="p-4 space-y-4 hidden">
-                <div class="p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl text-xs flex items-start gap-2">
-                    <i class="fa-solid fa-circle-info text-amber-600 mt-0.5"></i>
-                    <div>
-                        Bu bölmə müxtəlif e-qaimələrdən daxil olmuş eyni adlı məhsulları avtomatik olaraq bir yerə toplayır, ümumi miqdarını, ümumi məbləğini və orta faktiki alış qiymətini hesablayır.
-                    </div>
+            <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-500">Unikal Məhsul Çeşidi</p>
+                    <h4 id="kpi-unique-products" class="text-2xl font-bold text-slate-800 mt-1">0</h4>
                 </div>
-
-                <div class="overflow-x-auto border border-slate-200 rounded-xl">
-                    <table class="w-full text-left text-xs text-slate-700">
-                        <thead class="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200 uppercase tracking-wider">
-                            <tr>
-                                <th class="p-3">#</th>
-                                <th class="p-3">Məhsulun Adı</th>
-                                <th class="p-3 text-center">Ölçü Vahidi</th>
-                                <th class="p-3 text-right">Ümumi Alınan Miqdar</th>
-                                <th class="p-3 text-right">Orta Vahid Qiyməti</th>
-                                <th class="p-3 text-right">Ümumi Xərclənən Məbləğ</th>
-                                <th class="p-3 text-center">Qaimə Sayı</th>
-                            </tr>
-                        </thead>
-                        <tbody id="summaryTableBody" class="divide-y divide-slate-200 bg-white">
-                            <!-- Injected JS -->
-                        </tbody>
-                    </table>
+                <div class="w-10 h-10 bg-purple-50 text-purple-600 rounded-lg flex items-center justify-center text-lg">
+                    <i class="fa-solid fa-tags"></i>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-500">Ümumi Yekun Məbləğ</p>
+                    <h4 id="kpi-total-amount" class="text-2xl font-bold text-emerald-600 mt-1">0.00 ₼</h4>
+                </div>
+                <div class="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center text-lg">
+                    <i class="fa-solid fa-manat-sign"></i>
                 </div>
             </div>
         </section>
+
+        <!-- Main Data View Tabs and Filters -->
+        <section class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+            
+            <!-- Tab Controls & Search Bar Header -->
+            <div class="p-4 border-b border-slate-200 bg-slate-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                
+                <!-- Navigation Tabs -->
+                <div class="flex bg-slate-200/70 p-1 rounded-xl w-full md:w-auto">
+                    <button id="tab-btn-master" onclick="switchTab('master')" class="flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition bg-white text-slate-800 shadow-sm">
+                        <i class="fa-solid fa-list mr-2"></i>Bütün Qaimə Sətirləri
+                    </button>
+                    <button id="tab-btn-summary" onclick="switchTab('summary')" class="flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition text-slate-600 hover:text-slate-900">
+                        <i class="fa-solid fa-layer-group mr-2"></i>Avtomatik Xülasə (Qruplaşdırılmış)
+                    </button>
+                </div>
+
+                <!-- Search & Filters -->
+                <div class="flex items-center space-x-3 w-full md:w-auto">
+                    <div class="relative flex-1 md:w-64">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input type="text" id="table-search" oninput="applyFilters()" placeholder="Məhsul adı və ya qaimə..." class="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+                    
+                    <select id="supplier-filter" onchange="applyFilters()" class="py-1.5 px-3 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                        <option value="">Bütün Təchizatçılar</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Tab 1: Master Invoice Lines Table View -->
+            <div id="tab-content-master" class="overflow-x-auto custom-scrollbar flex-1">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="bg-slate-100/80 text-slate-600 font-semibold uppercase tracking-wider border-b border-slate-200">
+                            <th class="py-3 px-4">Tarix</th>
+                            <th class="py-3 px-4">Qaimə Nüm / Seriya</th>
+                            <th class="py-3 px-4">Təchizatçı (Göndərən)</th>
+                            <th class="py-3 px-4">Malın Adı</th>
+                            <th class="py-3 px-4 text-center">Ölçü Vahidi</th>
+                            <th class="py-3 px-4 text-right">Miqdar</th>
+                            <th class="py-3 px-4 text-right">Vahid Qiyməti</th>
+                            <th class="py-3 px-4 text-right">Məbləğ (₼)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="master-table-body" class="divide-y divide-slate-100 text-slate-700">
+                        <tr>
+                            <td colspan="8" class="py-12 text-center text-slate-400">
+                                <i class="fa-regular fa-folder-open text-4xl mb-3 block opacity-50"></i>
+                                Hələ heç bir qaimə və ya Excel yüklənməyib. Yuxarıdakı sahəyə faylları əlavə edin.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Tab 2: Grouped Product Summary Table View -->
+            <div id="tab-content-summary" class="hidden overflow-x-auto custom-scrollbar flex-1">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="bg-slate-100/80 text-slate-600 font-semibold uppercase tracking-wider border-b border-slate-200">
+                            <th class="py-3 px-4">#</th>
+                            <th class="py-3 px-4">Məhsulun Tam Adı</th>
+                            <th class="py-3 px-4 text-center">Ölçü Vahidi</th>
+                            <th class="py-3 px-4 text-right">Cəmi Miqdar</th>
+                            <th class="py-3 px-4 text-right">Orta Vahid Qiyməti</th>
+                            <th class="py-3 px-4 text-right">Ümumi Məbləğ (₼)</th>
+                            <th class="py-3 px-4 text-center">Təkrar Sayı</th>
+                        </tr>
+                    </thead>
+                    <tbody id="summary-table-body" class="divide-y divide-slate-100 text-slate-700">
+                        <tr>
+                            <td colspan="7" class="py-12 text-center text-slate-400">
+                                Xülasə məlumatları fayllar yükləndikdən sonra avtomatik olaraq bura yığılacaq.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Table Footer Summary Row -->
+            <div class="p-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center text-xs font-semibold text-slate-700">
+                <span id="records-counter">Göstərilən sətir: 0</span>
+                <div class="space-x-4">
+                    <span>Cəmi Məbləğ: <strong id="footer-total-amount" class="text-brand-600 text-sm font-bold">0.00 ₼</strong></span>
+                </div>
+            </div>
+
+        </section>
+
     </main>
 
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
+        <p>Müəssisə daxili inventar və xərc izləmə platforması &copy; 2026. Bütün məlumatlar müştəri tərəfində yerli emal olunur.</p>
+    </footer>
+
+    <!-- Application JavaScript Logic -->
     <script>
-        // Global State Store
-        let masterItems = [];
+        // Global state storage
+        let masterData = [];
+        let activeTab = 'master';
 
-        // Sample e-invoice dataset matching Azerbaijani official tax e-invoice PDF provided
-        const SAMPLE_INVOICE_DATA = [
-            { id: 1, invoiceNo: 'MT2608 12610184', date: '03.09.2026', supplier: '"ARAZ SUPERMARKET" MMC', name: 'YEMIS KG', unit: 'ƏDƏD', qty: 24, unitPrice: 0.8904, total: 21.37 },
-            { id: 2, invoiceNo: 'MT2608 12610184', date: '03.09.2026', supplier: '"ARAZ SUPERMARKET" MMC', name: 'GOYERTI (KESNIS.SUYUD.ZIG.KEVER)', unit: 'ƏDƏD', qty: 10, unitPrice: 0.3900, total: 3.90 },
-            { id: 3, invoiceNo: 'MT2608 12610184', date: '03.09.2026', supplier: '"ARAZ SUPERMARKET" MMC', name: 'GILEZI AG YUMURTA IRI', unit: 'ƏDƏD', qty: 75, unitPrice: 0.1600, total: 12.00 },
-            { id: 4, invoiceNo: 'MT2608 12610184', date: '03.09.2026', supplier: '"ARAZ SUPERMARKET" MMC', name: 'BAKI ZAVOD COREYI (SEKI)', unit: 'ƏDƏD', qty: 24, unitPrice: 0.5000, total: 12.00 },
-            { id: 5, invoiceNo: 'MT2608 12610184', date: '03.09.2026', supplier: '"ARAZ SUPERMARKET" MMC', name: 'XONCA XASXASLI FRANSIZ BULKASI', unit: 'ƏDƏD', qty: 6, unitPrice: 1.1500, total: 6.90 },
-            { id: 6, invoiceNo: 'MT2608 12610184', date: '03.09.2026', supplier: '"ARAZ SUPERMARKET" MMC', name: 'XONCA TORT CHOCOLATINE (B)', unit: 'ƏDƏD', qty: 1, unitPrice: 20.9900, total: 20.99 },
-            { id: 7, invoiceNo: 'MT2608 12610184', date: '03.09.2026', supplier: '"ARAZ SUPERMARKET" MMC', name: 'UZUN OMUR QATIQ 1.4KQ', unit: 'ƏDƏD', qty: 2, unitPrice: 4.6000, total: 9.20 },
-            { id: 8, invoiceNo: 'MT2608 12610184', date: '03.09.2026', supplier: '"ARAZ SUPERMARKET" MMC', name: 'SEYIDOGLU BOOL KAK. FIN. SOK YAGI 400 GR', unit: 'ƏDƏD', qty: 3, unitPrice: 4.4900, total: 13.47 },
-            { id: 9, invoiceNo: 'MT2608 12610184', date: '03.09.2026', supplier: '"ARAZ SUPERMARKET" MMC', name: 'PAKET ARAZ 35X65 7KG', unit: 'ƏDƏD', qty: 4, unitPrice: 0.0700, total: 0.28 },
-            { id: 10, invoiceNo: 'MT2608 12610184', date: '03.09.2026', supplier: '"ARAZ SUPERMARKET" MMC', name: 'PAKET ARAZ 31*60 5KG', unit: 'ƏDƏD', qty: 1, unitPrice: 0.0700, total: 0.07 },
-            { id: 11, invoiceNo: 'MT2608 12610184', date: '03.09.2026', supplier: '"ARAZ SUPERMARKET" MMC', name: 'MILLA QATIQ 1.5% 900 GR', unit: 'ƏDƏD', qty: 4, unitPrice: 3.4500, total: 13.80 },
-            { id: 12, invoiceNo: 'MT2608 12610184', date: '03.09.2026', supplier: '"ARAZ SUPERMARKET" MMC', name: 'ICELAND SUDLU VANILLI DONURMA 60 GR', unit: 'ƏDƏD', qty: 2, unitPrice: 0.3500, total: 0.70 },
-            { id: 13, invoiceNo: 'MT2608 12610184', date: '03.09.2026', supplier: '"ARAZ SUPERMARKET" MMC', name: 'AZERSEKER KELLE QEND 5KG', unit: 'ƏDƏD', qty: 1, unitPrice: 11.2500, total: 11.25 }
-        ];
+        /**
+         * Clean raw product titles extracted from official Azerbaijani E-Invoices
+         * Removes column headers (e.g. "2 3 4 5 ... 18 1"), barcodes, tax codes, etc.
+         */
+        function cleanProductName(rawName) {
+            if (!rawName) return '';
 
-        document.addEventListener('DOMContentLoaded', () => {
-            loadFromLocalStorage();
-            setupDragAndDrop();
-        });
+            let cleaned = rawName.toString();
 
-        function setupDragAndDrop() {
-            const dropZone = document.getElementById('dropZone');
+            // 1. Remove explicit header string patterns like "2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 1"
+            cleaned = cleaned.replace(/(?:\b\d{1,2}\s+){5,18}\d{1,2}/g, '');
 
-            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                dropZone.addEventListener(eventName, preventDefaults, false);
-            });
+            // 2. Remove isolated leading tax calculation numbers (e.g., "0 2.8989 0.117 0 0 ...")
+            cleaned = cleaned.replace(/^[\d\.\s]{5,40}(?=[A-Za-zƏəĞğIıİiÖöŞşÜüÇç])/, '');
 
-            function preventDefaults(e) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
+            // 3. Remove leading column indices or standalone numbers
+            cleaned = cleaned.replace(/^\d+\s+/, '');
 
-            ['dragenter', 'dragover'].forEach(eventName => {
-                dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-over'), false);
-            });
+            // 4. Remove unwanted technical barcodes/GTIN/HS Codes (like 0602903000)
+            cleaned = cleaned.replace(/\b\d{8,14}\b/g, '');
 
-            ['dragleave', 'drop'].forEach(eventName => {
-                dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-over'), false);
-            });
+            // 5. Clean up multiple spaces and trim
+            cleaned = cleaned.replace(/\s+/g, ' ').trim();
 
-            dropZone.addEventListener('drop', handleDrop, false);
+            return cleaned;
         }
 
-        function handleDrop(e) {
-            const dt = e.dataTransfer;
-            const files = dt.files;
-            processFiles(files);
-        }
-
-        function handleFileSelect(e) {
-            const files = e.target.files;
-            processFiles(files);
-        }
-
-        async function processFiles(files) {
+        /**
+         * Handle file selections via input or drag-and-drop
+         */
+        async function handleFileSelect(event) {
+            const files = event.target.files || event.dataTransfer.files;
             if (!files || files.length === 0) return;
 
-            showStatus(true, 'Fayl(lar) oxunur...');
+            showParsingStatus(true, "Fayllar oxunur və təhlil edilir...");
 
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                const ext = file.name.split('.').pop().toLowerCase();
-
+            for (let file of files) {
+                const fileName = file.name.toLowerCase();
                 try {
-                    if (ext === 'pdf') {
-                        await parsePDFInvoice(file);
-                    } else if (['xlsx', 'xls', 'csv'].includes(ext)) {
+                    if (fileName.endsWith('.pdf')) {
+                        await parsePdfInvoice(file);
+                    } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
                         await parseExcelInvoice(file);
-                    } else {
-                        alert(`Dəstəklənməyən fayl formatı: ${file.name}`);
                     }
-                } catch (err) {
-                    console.error('File parsing error:', err);
-                    alert(`Fayl oxunarkən xəta baş verdi (${file.name}): ` + err.message);
+                } catch (error) {
+                    console.error("Fayl oxunarkən xəta baş verdi:", file.name, error);
                 }
             }
 
-            showStatus(false);
-            saveToLocalStorage();
-            renderTables();
+            showParsingStatus(false);
+            updateDashboard();
+            
+            // Reset input value to allow re-uploading same file if needed
+            document.getElementById('file-input').value = '';
         }
 
-        async function parsePDFInvoice(file) {
+        /**
+         * PDF Parser using PDF.js specifically tailored for Azerbaijani E-Qaimə documents
+         */
+        async function parsePdfInvoice(file) {
             const arrayBuffer = await file.arrayBuffer();
             const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-            
-            let fullText = "";
+
+            let fullTextLines = [];
+            let supplierName = "Naməlum Təchizatçı";
+            let invoiceNo = "Q-001";
+            let invoiceDate = new Date().toISOString().split('T')[0];
+
             for (let i = 1; i <= pdf.numPages; i++) {
                 const page = await pdf.getPage(i);
                 const textContent = await page.getTextContent();
-                const pageText = textContent.items.map(item => item.str).join(" ");
-                fullText += pageText + " ";
+                
+                // Group items by vertical Y coordinates roughly
+                let items = textContent.items;
+                let pageText = items.map(item => item.str).join(' ');
+                
+                // Extract Metadata if present
+                const supplierMatch = pageText.match(/"([^"]+)"\s+MƏHDUD MƏSULİYYƏTLİ CƏMİYYƏTİ/i) || pageText.match(/Göndərən:\s*VÖEN[\s\S]*?"([^"]+)"/i);
+                if (supplierMatch) {
+                    supplierName = supplierMatch[1] ? supplierMatch[1].trim() : supplierMatch[0].trim();
+                }
+
+                const noMatch = pageText.match(/Seriya:\s*([A-Z0-9]+)\s*Nömrə:\s*(\d+)/i) || pageText.match(/MT\d{4}\s*\d+/);
+                if (noMatch) {
+                    invoiceNo = noMatch[0].replace(/Seriya:\s*/i, '').replace(/\s*Nömrə:\s*/i, ' ');
+                }
+
+                const dateMatch = pageText.match(/Tarix:\s*(\d{2}\.\d{2}\.\d{4})/i) || pageText.match(/(\d{2}\.\d{2}\.\d{4})/);
+                if (dateMatch) {
+                    invoiceDate = dateMatch[1];
+                }
+
+                // Collect line text
+                items.forEach(item => {
+                    if (item.str.trim().length > 0) {
+                        fullTextLines.push(item.str.trim());
+                    }
+                });
             }
 
-            // Extract Header Meta Data
-            let supplier = "Naməlum Təchizatçı";
-            let invoiceNo = "Təyin edilməyib";
-            let date = new Date().toLocaleDateString('az-AZ');
-
-            // Extraction Patterns matching official e-Invoice structure
-            const supplierMatch = fullText.match(/Göndərən:\s*VÖEN[\s\d]+"([^"]+)"/i) || fullText.match(/"([^"]+)"\s*MƏHDUD MƏSULİYYƏTLİ/i);
-            if (supplierMatch) {
-                supplier = supplierMatch[1] || supplierMatch[0];
-            } else if (fullText.includes("ARAZ SUPERMARKET")) {
-                supplier = '"ARAZ SUPERMARKET" MMC';
-            }
-
-            const invoiceNoMatch = fullText.match(/Seriya:\s*([A-Z0-9]+)\s*Nömrə:\s*(\d+)/i) || fullText.match(/(MT\d+\s*\d+)/i);
-            if (invoiceNoMatch) {
-                invoiceNo = invoiceNoMatch[1] + " " + (invoiceNoMatch[2] || "");
-            }
-
-            const dateMatch = fullText.match(/Tarix:\s*(\d{2}\.\d{2}\.\d{4})/i) || fullText.match(/(\d{2}\.\d{2}\.\d{4})/);
-            if (dateMatch) {
-                date = dateMatch[1];
-            }
-
-            // Extract items row by row
-            // Patterns tailored for tabular e-Invoices: Item Index, Item Name, Unit, Qty, Prices
-            const newParsedItems = [];
+            // Fallback product parsing using regex & structured row tokens
+            // Scans for patterns containing Azerbaijani uppercase product names with quantities and prices
+            const combinedStr = fullTextLines.join(' ');
             
-            // Regex match for table row sequence: [Digit index] [Item Name] [Code/GTIN...] [ƏDƏD/KG/s.] [Qty] [Unit price] ... [Total Amount]
-            const lineRegex = /(\d+)\s+([A-ZƏĞIİÖŞÜ0-9\s\.\*\-\(\)]+?)\s+(0\d+|\d{10})\s+\d*\s+(ƏDƏD|KG|KILOGRAM|METR|LITR)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s+([\d\.]+)/gi;
-            
-            let match;
-            while ((match = lineRegex.exec(fullText)) !== null) {
-                const name = match[2].trim();
-                const unit = match[4].trim();
-                const qty = parseFloat(match[5]) || 1;
-                const total = parseFloat(match[7]) || (parseFloat(match[6]) * qty);
-                const unitPrice = qty > 0 ? (total / qty) : parseFloat(match[6]);
+            // Split based on typical invoice row separators or line indices
+            const rowMatches = combinedStr.split(/(?=\b\d{1,2}\s*\|\s*[A-ZƏĞIİÖŞÜ])/g);
 
-                if (name.length > 2) {
-                    newParsedItems.push({
-                        id: Date.now() + Math.random(),
-                        invoiceNo,
-                        date,
-                        supplier,
-                        name,
-                        unit,
-                        qty,
-                        unitPrice,
-                        total
-                    });
+            let extractedCount = 0;
+
+            rowMatches.forEach(rowStr => {
+                if (!rowStr.includes('|') && !rowStr.match(/[A-ZƏĞIİÖŞÜ]{3,}/)) return;
+
+                const parts = rowStr.split('|').map(p => p.trim());
+                if (parts.length >= 5) {
+                    let rawTitle = parts[1] || parts[0];
+                    let cleanTitle = cleanProductName(rawTitle);
+
+                    let unit = parts[4] || "ƏDƏD";
+                    let qty = parseFloat((parts[5] || "1").replace(',', '.')) || 1;
+                    let price = parseFloat((parts[6] || "0").replace(',', '.')) || 0;
+                    let total = parseFloat((parts[7] || "0").replace(',', '.')) || (qty * price);
+
+                    if (cleanTitle.length > 2 && !cleanTitle.includes("Sıra Ne") && !cleanTitle.includes("Cəmi")) {
+                        masterData.push({
+                            id: Date.now() + Math.random(),
+                            date: invoiceDate,
+                            invoiceNo: invoiceNo,
+                            supplier: supplierName,
+                            productName: cleanTitle,
+                            unit: unit,
+                            quantity: qty,
+                            unitPrice: price > 0 ? price : (total / qty),
+                            totalAmount: total
+                        });
+                        extractedCount++;
+                    }
+                }
+            });
+
+            // If strict separator split fails, fallback to line-by-line scanning
+            if (extractedCount === 0) {
+                for (let i = 0; i < fullTextLines.length; i++) {
+                    let line = fullTextLines[i];
+                    if (line.match(/^[A-ZƏĞIİÖŞÜ0-9\s\(\)\*\-\.]{4,}$/) && !line.includes("ELEKTRON") && !line.includes("CƏMİ")) {
+                        let cleaned = cleanProductName(line);
+                        if (cleaned.length > 2) {
+                            masterData.push({
+                                id: Date.now() + Math.random(),
+                                date: invoiceDate,
+                                invoiceNo: invoiceNo,
+                                supplier: supplierName,
+                                productName: cleaned,
+                                unit: "ƏDƏD",
+                                quantity: 1,
+                                unitPrice: 0,
+                                totalAmount: 0
+                            });
+                        }
+                    }
                 }
             }
-
-            // Fallback parsing if main regex didn't catch rows due to PDF layout quirks
-            if (newParsedItems.length === 0) {
-                // Pre-structured sample items matching user PDF if exact match detected
-                if (fullText.includes("12610184") || fullText.includes("YEMIS KG")) {
-                    SAMPLE_INVOICE_DATA.forEach(item => {
-                        newParsedItems.push({ ...item, id: Date.now() + Math.random() });
-                    });
-                }
-            }
-
-            masterItems.push(...newParsedItems);
         }
 
+        /**
+         * Excel Parser using SheetJS
+         */
         async function parseExcelInvoice(file) {
             const data = await file.arrayBuffer();
             const workbook = XLSX.read(data, { type: 'array' });
@@ -412,245 +435,257 @@
 
             if (jsonRows.length === 0) return;
 
-            const filename = file.name.replace(/\.[^/.]+$/, "");
-            const dateStr = new Date().toLocaleDateString('az-AZ');
+            let supplier = file.name.replace(/\.[^/.]+$/, "");
+            let date = new Date().toISOString().split('T')[0];
 
-            jsonRows.forEach((row, idx) => {
-                if (idx === 0 || row.length < 3) return; // Skip headers/empty rows
+            for (let i = 0; i < jsonRows.length; i++) {
+                const row = jsonRows[i];
+                if (!row || row.length === 0) continue;
 
-                // Column matching heuristic
-                const name = row[1] || row[0] || "Məhsul " + idx;
-                const unit = row[4] || row[2] || "ƏDƏD";
-                const qty = parseFloat(row[5] || row[3]) || 1;
-                const total = parseFloat(row[7] || row[row.length - 1] || row[6]) || 0;
-                const unitPrice = qty > 0 ? (total / qty) : 0;
+                // Look for product-like row entries
+                let rawTitle = row.find(cell => typeof cell === 'string' && cell.trim().length > 3 && !cell.toLowerCase().includes('cəmi'));
+                
+                if (rawTitle) {
+                    let cleaned = cleanProductName(rawTitle);
+                    
+                    // Find numeric columns for quantity & price
+                    let numbers = row.filter(cell => typeof cell === 'number' || (!isNaN(cell) && cell !== ''));
+                    let qty = parseFloat(numbers[0]) || 1;
+                    let price = parseFloat(numbers[1]) || 0;
+                    let total = parseFloat(numbers[2]) || (qty * price);
 
-                masterItems.push({
-                    id: Date.now() + Math.random(),
-                    invoiceNo: filename,
-                    date: dateStr,
-                    supplier: "Excel İdxalı",
-                    name: String(name).trim(),
-                    unit: String(unit).trim(),
-                    qty,
-                    unitPrice,
-                    total
-                });
-            });
-        }
-
-        function loadSampleInvoice() {
-            masterItems.push(...SAMPLE_INVOICE_DATA.map(i => ({ ...i, id: Date.now() + Math.random() })));
-            saveToLocalStorage();
-            renderTables();
-        }
-
-        function clearAllData() {
-            if (confirm("Bütün daxil edilmiş qaimə məlumatlarını silmək istədiyinizdən əminsiniz?")) {
-                masterItems = [];
-                saveToLocalStorage();
-                renderTables();
+                    if (cleaned.length > 2) {
+                        masterData.push({
+                            id: Date.now() + Math.random(),
+                            date: date,
+                            invoiceNo: "EXCEL-IMPORT",
+                            supplier: supplier,
+                            productName: cleaned,
+                            unit: "ƏDƏD",
+                            quantity: qty,
+                            unitPrice: price,
+                            totalAmount: total
+                        });
+                    }
+                }
             }
         }
 
-        function deleteItem(id) {
-            masterItems = masterItems.filter(item => item.id !== id);
-            saveToLocalStorage();
+        /**
+         * Update UI Dashboard, Tables, Filters and KPIs
+         */
+        function updateDashboard() {
+            populateSupplierFilter();
             renderTables();
+            updateKPIs();
         }
 
-        function switchTab(tab) {
-            const btnDet = document.getElementById('tabBtnDetailed');
-            const btnSum = document.getElementById('tabBtnSummary');
-            const viewDet = document.getElementById('tabDetailedContent');
-            const viewSum = document.getElementById('tabSummaryContent');
-
-            if (tab === 'detailed') {
-                btnDet.className = "px-4 py-2.5 text-xs font-semibold rounded-t-lg transition border-b-2 border-brand-600 text-brand-600 bg-white shadow-sm flex items-center gap-2";
-                btnSum.className = "px-4 py-2.5 text-xs font-semibold rounded-t-lg transition border-b-2 border-transparent text-slate-600 hover:text-slate-900 flex items-center gap-2";
-                viewDet.classList.remove('hidden');
-                viewSum.classList.add('hidden');
-            } else {
-                btnSum.className = "px-4 py-2.5 text-xs font-semibold rounded-t-lg transition border-b-2 border-brand-600 text-brand-600 bg-white shadow-sm flex items-center gap-2";
-                btnDet.className = "px-4 py-2.5 text-xs font-semibold rounded-t-lg transition border-b-2 border-transparent text-slate-600 hover:text-slate-900 flex items-center gap-2";
-                viewSum.classList.remove('hidden');
-                viewDet.classList.add('hidden');
-            }
-        }
-
-        function renderTables() {
-            updateStats();
-            updateSupplierFilterOptions();
-            renderDetailedTable();
-            renderSummaryTable();
-        }
-
-        function updateStats() {
-            const totalItems = masterItems.length;
-            const totalAmount = masterItems.reduce((acc, curr) => acc + (curr.total || 0), 0);
-            const suppliers = new Set(masterItems.map(i => i.supplier)).size;
-            const invoices = new Set(masterItems.map(i => i.invoiceNo)).size;
-
-            document.getElementById('statTotalItems').innerText = totalItems;
-            document.getElementById('statTotalAmount').innerText = totalAmount.toFixed(2) + " ₼";
-            document.getElementById('statSuppliersCount').innerText = suppliers;
-            document.getElementById('statInvoicesCount').innerText = invoices;
-        }
-
-        function updateSupplierFilterOptions() {
-            const select = document.getElementById('supplierFilter');
+        /**
+         * Populate Supplier Dropdown Filter
+         */
+        function populateSupplierFilter() {
+            const select = document.getElementById('supplier-filter');
             const currentVal = select.value;
-            const suppliers = Array.from(new Set(masterItems.map(i => i.supplier)));
+            const suppliers = [...new Set(masterData.map(item => item.supplier))];
 
-            select.innerHTML = `<option value="">Bütün Təchizatçılar</option>` +
-                suppliers.map(s => `<option value="${s}" ${s === currentVal ? 'selected' : ''}>${s}</option>`).join('');
+            select.innerHTML = '<option value="">Bütün Təchizatçılar</option>';
+            suppliers.forEach(sup => {
+                const opt = document.createElement('option');
+                opt.value = sup;
+                opt.textContent = sup;
+                select.appendChild(opt);
+            });
+            select.value = currentVal;
         }
 
-        function renderDetailedTable() {
-            const tbody = document.getElementById('detailedTableBody');
-            const searchVal = document.getElementById('searchInput').value.toLowerCase();
-            const supplierVal = document.getElementById('supplierFilter').value;
+        /**
+         * Calculate and render KPI metrics
+         */
+        function updateKPIs() {
+            const invoices = new Set(masterData.map(i => i.invoiceNo));
+            const uniqueProds = new Set(masterData.map(i => i.productName.toLowerCase()));
+            const totalSum = masterData.reduce((acc, curr) => acc + (curr.totalAmount || 0), 0);
 
-            const filtered = masterItems.filter(item => {
-                const matchesSearch = item.name.toLowerCase().includes(searchVal) || item.invoiceNo.toLowerCase().includes(searchVal);
-                const matchesSupplier = !supplierVal || item.supplier === supplierVal;
+            document.getElementById('kpi-invoice-count').textContent = invoices.size;
+            document.getElementById('kpi-total-items').textContent = masterData.length;
+            document.getElementById('kpi-unique-products').textContent = uniqueProds.size;
+            document.getElementById('kpi-total-amount').textContent = totalSum.toFixed(2) + ' ₼';
+        }
+
+        /**
+         * Render active view tables (Master or Summary)
+         */
+        function renderTables() {
+            const searchTerm = document.getElementById('table-search').value.toLowerCase();
+            const selectedSupplier = document.getElementById('supplier-filter').value;
+
+            // Filter master data
+            const filteredData = masterData.filter(item => {
+                const matchesSearch = item.productName.toLowerCase().includes(searchTerm) ||
+                                     item.invoiceNo.toLowerCase().includes(searchTerm) ||
+                                     item.supplier.toLowerCase().includes(searchTerm);
+                const matchesSupplier = !selectedSupplier || item.supplier === selectedSupplier;
                 return matchesSearch && matchesSupplier;
             });
 
-            document.getElementById('filteredCount').innerText = filtered.length;
-
-            if (filtered.length === 0) {
-                tbody.innerHTML = `
+            // 1. Render Master Line Table
+            const masterBody = document.getElementById('master-table-body');
+            if (filteredData.length === 0) {
+                masterBody.innerHTML = `
                     <tr>
-                        <td colspan="10" class="p-8 text-center text-slate-400">
-                            <i class="fa-solid fa-folder-open text-3xl mb-2"></i>
-                            <p>Məlumat tapılmadı. Yuxarıdakı sahədən Elektron Qaimə faylını əlavə edin.</p>
+                        <td colspan="8" class="py-8 text-center text-slate-400">
+                            Heç bir nəticə tapılmadı.
                         </td>
+                    </tr>`;
+            } else {
+                masterBody.innerHTML = filteredData.map(item => `
+                    <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+                        <td class="py-2.5 px-4 text-slate-500 font-mono text-[11px]">${item.date}</td>
+                        <td class="py-2.5 px-4 font-semibold text-brand-600">${item.invoiceNo}</td>
+                        <td class="py-2.5 px-4 max-w-[180px] truncate" title="${item.supplier}">${item.supplier}</td>
+                        <td class="py-2.5 px-4 font-medium text-slate-900">${item.productName}</td>
+                        <td class="py-2.5 px-4 text-center text-slate-500">${item.unit}</td>
+                        <td class="py-2.5 px-4 text-right font-mono">${item.quantity}</td>
+                        <td class="py-2.5 px-4 text-right font-mono">${item.unitPrice.toFixed(4)} ₼</td>
+                        <td class="py-2.5 px-4 text-right font-semibold text-slate-900 font-mono">${item.totalAmount.toFixed(2)} ₼</td>
                     </tr>
-                `;
-                return;
+                `).join('');
             }
 
-            tbody.innerHTML = filtered.map((item, idx) => `
-                <tr class="hover:bg-slate-50 transition">
-                    <td class="p-3 text-slate-400">${idx + 1}</td>
-                    <td class="p-3 font-medium text-slate-600">${item.date}</td>
-                    <td class="p-3 font-semibold text-slate-800">${item.supplier}</td>
-                    <td class="p-3 font-mono text-slate-500">${item.invoiceNo}</td>
-                    <td class="p-3 font-medium text-slate-900">${item.name}</td>
-                    <td class="p-3 text-center"><span class="px-2 py-0.5 bg-slate-100 rounded text-slate-600 font-mono text-[10px]">${item.unit}</span></td>
-                    <td class="p-3 text-right font-semibold">${item.qty}</td>
-                    <td class="p-3 text-right font-mono">${(item.unitPrice || 0).toFixed(4)} ₼</td>
-                    <td class="p-3 text-right font-bold text-emerald-600">${(item.total || 0).toFixed(2)} ₼</td>
-                    <td class="p-3 text-center">
-                        <button onclick="deleteItem(${item.id})" class="text-rose-500 hover:text-rose-700 p-1 rounded transition" title="Sil">
-                            <i class="fa-solid fa-trash-can"></i>
-                        </button>
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        function renderSummaryTable() {
-            const tbody = document.getElementById('summaryTableBody');
-
-            // Group by item name
-            const grouped = {};
-            masterItems.forEach(item => {
-                const key = item.name.trim().toUpperCase();
-                if (!grouped[key]) {
-                    grouped[key] = {
-                        name: item.name,
+            // 2. Render Aggregated Product Summary Table
+            const summaryMap = {};
+            filteredData.forEach(item => {
+                const key = item.productName.trim().toUpperCase();
+                if (!summaryMap[key]) {
+                    summaryMap[key] = {
+                        name: item.productName,
                         unit: item.unit,
-                        totalQty: 0,
+                        totalQuantity: 0,
                         totalAmount: 0,
-                        invoices: new Set()
+                        count: 0
                     };
                 }
-                grouped[key].totalQty += (item.qty || 0);
-                grouped[key].totalAmount += (item.total || 0);
-                grouped[key].invoices.add(item.invoiceNo);
+                summaryMap[key].totalQuantity += item.quantity;
+                summaryMap[key].totalAmount += item.totalAmount;
+                summaryMap[key].count += 1;
             });
 
-            const summaryArray = Object.values(grouped);
+            const summaryList = Object.values(summaryMap);
+            const summaryBody = document.getElementById('summary-table-body');
 
-            if (summaryArray.length === 0) {
-                tbody.innerHTML = `
+            if (summaryList.length === 0) {
+                summaryBody.innerHTML = `
                     <tr>
-                        <td colspan="7" class="p-8 text-center text-slate-400">
-                            Xülasə çıxarmaq üçün məlumat mövcud deyil.
+                        <td colspan="7" class="py-8 text-center text-slate-400">
+                            Xülasə hazırlamaq üçün məlumat tapılmadı.
+                        </td>
+                    </tr>`;
+            } else {
+                summaryBody.innerHTML = summaryList.map((sum, index) => {
+                    const avgPrice = sum.totalQuantity > 0 ? (sum.totalAmount / sum.totalQuantity) : 0;
+                    return `
+                    <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+                        <td class="py-2.5 px-4 text-slate-400 font-mono text-[11px]">${index + 1}</td>
+                        <td class="py-2.5 px-4 font-semibold text-slate-900">${sum.name}</td>
+                        <td class="py-2.5 px-4 text-center text-slate-500">${sum.unit}</td>
+                        <td class="py-2.5 px-4 text-right font-mono font-bold text-brand-600">${sum.totalQuantity}</td>
+                        <td class="py-2.5 px-4 text-right font-mono">${avgPrice.toFixed(4)} ₼</td>
+                        <td class="py-2.5 px-4 text-right font-semibold text-slate-900 font-mono">${sum.totalAmount.toFixed(2)} ₼</td>
+                        <td class="py-2.5 px-4 text-center">
+                            <span class="inline-block bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-[10px] font-bold">${sum.count} qaimə</span>
                         </td>
                     </tr>
-                `;
-                return;
+                    `;
+                }).join('');
             }
 
-            tbody.innerHTML = summaryArray.map((item, idx) => {
-                const avgPrice = item.totalQty > 0 ? (item.totalAmount / item.totalQty) : 0;
-                return `
-                    <tr class="hover:bg-slate-50 transition">
-                        <td class="p-3 text-slate-400">${idx + 1}</td>
-                        <td class="p-3 font-semibold text-slate-900">${item.name}</td>
-                        <td class="p-3 text-center"><span class="px-2 py-0.5 bg-slate-100 rounded text-slate-600 font-mono text-[10px]">${item.unit}</span></td>
-                        <td class="p-3 text-right font-bold text-slate-800">${item.totalQty}</td>
-                        <td class="p-3 text-right font-mono text-brand-600">${avgPrice.toFixed(4)} ₼</td>
-                        <td class="p-3 text-right font-bold text-emerald-600">${item.totalAmount.toFixed(2)} ₼</td>
-                        <td class="p-3 text-center"><span class="px-2 py-0.5 bg-purple-50 text-purple-700 rounded-full font-semibold">${item.invoices.size}</span></td>
-                    </tr>
-                `;
-            }).join('');
+            // Update footer totals
+            const totalSum = filteredData.reduce((acc, curr) => acc + curr.totalAmount, 0);
+            document.getElementById('footer-total-amount').textContent = totalSum.toFixed(2) + ' ₼';
+            document.getElementById('records-counter').textContent = `Göstərilən sətir: ${filteredData.length}`;
         }
 
-        function exportToExcel() {
-            if (masterItems.length === 0) {
-                alert("İxrac etmək üçün heç bir məlumat yoxdur.");
+        /**
+         * Switch between Master lines tab and Grouped summary tab
+         */
+        function switchTab(tab) {
+            activeTab = tab;
+            const btnMaster = document.getElementById('tab-btn-master');
+            const btnSummary = document.getElementById('tab-btn-summary');
+            const contentMaster = document.getElementById('tab-content-master');
+            const contentSummary = document.getElementById('tab-content-summary');
+
+            if (tab === 'master') {
+                btnMaster.className = "flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition bg-white text-slate-800 shadow-sm";
+                btnSummary.className = "flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition text-slate-600 hover:text-slate-900";
+                contentMaster.classList.remove('hidden');
+                contentSummary.classList.add('hidden');
+            } else {
+                btnSummary.className = "flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition bg-white text-slate-800 shadow-sm";
+                btnMaster.className = "flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition text-slate-600 hover:text-slate-900";
+                contentSummary.classList.remove('hidden');
+                contentMaster.classList.add('hidden');
+            }
+        }
+
+        /**
+         * Apply search input and filters dynamically
+         */
+        function applyFilters() {
+            renderTables();
+        }
+
+        /**
+         * Export current consolidated master inventory data to Excel
+         */
+        function exportMasterExcel() {
+            if (masterData.length === 0) {
+                alert("Yükləmək üçün məlumat yoxdur!");
                 return;
             }
 
-            const exportData = masterItems.map((item, idx) => ({
+            const exportData = masterData.map((item, idx) => ({
                 "№": idx + 1,
                 "Tarix": item.date,
-                "Təchizatçı": item.supplier,
                 "Qaimə Nömrəsi": item.invoiceNo,
-                "Məhsulun Adı": item.name,
+                "Təchizatçı": item.supplier,
+                "Malın (İşin, Xidmətin) Adı": item.productName,
                 "Ölçü Vahidi": item.unit,
-                "Miqdar": item.qty,
-                "Vahid Qiyməti (₼)": item.unitPrice,
-                "Yekun Məbləğ (₼)": item.total
+                "Miqdar": item.quantity,
+                "Vahid Qiyməti (AZN)": item.unitPrice,
+                "Yekun Məbləğ (AZN)": item.totalAmount
             }));
 
             const worksheet = XLSX.utils.json_to_sheet(exportData);
             const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Qaimə Məhsulları");
-
-            XLSX.writeFile(workbook, `Qaime_Hesabati_${new Date().toISOString().slice(0,10)}.xlsx`);
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Qaimə Malları");
+            
+            // Auto download file
+            XLSX.writeFile(workbook, `Qaime_Hesabati_${new Date().toISOString().split('T')[0]}.xlsx`);
         }
 
-        function showStatus(visible, text = '') {
-            const el = document.getElementById('uploadStatus');
-            const txt = document.getElementById('statusText');
-            if (visible) {
-                txt.innerText = text;
+        /**
+         * Reset and clear all parsed data
+         */
+        function clearAllData() {
+            if (masterData.length > 0 && confirm("Bütün yüklənmiş məlumatları silmək istədiyinizdən əminsiniz?")) {
+                masterData = [];
+                updateDashboard();
+            }
+        }
+
+        /**
+         * Show/Hide parser loading state
+         */
+        function showParsingStatus(show, text = "") {
+            const el = document.getElementById('parsing-status');
+            const txt = document.getElementById('parsing-status-text');
+            if (show) {
+                txt.textContent = text;
                 el.classList.remove('hidden');
             } else {
                 el.classList.add('hidden');
             }
-        }
-
-        function saveToLocalStorage() {
-            localStorage.setItem('qaime_master_items', JSON.stringify(masterItems));
-        }
-
-        function loadFromLocalStorage() {
-            const saved = localStorage.getItem('qaime_master_items');
-            if (saved) {
-                try {
-                    masterItems = JSON.parse(saved);
-                } catch (e) {
-                    masterItems = [];
-                }
-            }
-            renderTables();
         }
     </script>
 </body>
