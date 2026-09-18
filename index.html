@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Qaimə və İnventar İdarəetmə Sistemi</title>
+    <title>QaiməOxuyan & Bazarlıq Sistemi</title>
 
     <!-- Tailwind CSS & FontAwesome -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -86,7 +86,7 @@
                     Elektron Qaimə (PDF) və ya Excel fayllarını buraya atın
                 </h3>
                 <p class="text-xs text-slate-500 mb-4">
-                    PDF mətnləri koordinatlarına görə qruplaşdırılır və yalnız təmiz məhsul adları cədvələ yazılır.
+                    Təmiz adlar, tam hesablanmış vahid qiymətləri və dəqiq məbləğlər.
                 </p>
                 <span class="inline-flex items-center space-x-2 text-xs font-medium text-brand-600 bg-white border border-brand-200 px-3 py-1.5 rounded-lg shadow-sm">
                     <i class="fa-solid fa-folder-open"></i>
@@ -97,7 +97,7 @@
             <div id="parsing-status" class="hidden mt-4 p-3 bg-brand-50 border border-brand-200 text-brand-700 text-sm rounded-xl flex items-center justify-between">
                 <div class="flex items-center space-x-3">
                     <i class="fa-solid fa-spinner animate-spin text-brand-600"></i>
-                    <span id="parsing-status-text">Fayllar oxunur...</span>
+                    <span id="parsing-status-text">Fayllar analiz edilir...</span>
                 </div>
             </div>
         </section>
@@ -229,18 +229,18 @@
             const files = event.target.files || event.dataTransfer.files;
             if (!files || files.length === 0) return;
 
-            showParsingStatus(true, "Fayllar analiz edilir...");
+            showParsingStatus(true, "Qaimələr analiz edilir...");
 
             for (let file of files) {
                 const fileName = file.name.toLowerCase();
                 try {
                     if (fileName.endsWith('.pdf')) {
-                        await parsePdfSpatial(file);
+                        await parsePdfSmartPrice(file);
                     } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
                         await parseExcelInvoice(file);
                     }
                 } catch (error) {
-                    console.error("Fayl oxunarkən xəta yarandı:", file.name, error);
+                    console.error("Xəta baş verdi:", file.name, error);
                 }
             }
 
@@ -250,9 +250,9 @@
         }
 
         /**
-         * Spatial Y-Coordinate Grouping for PDF Tables
+         * Advanced PDF Parser with Auto-Calculated Unit Price & Clean Product Titles
          */
-        async function parsePdfSpatial(file) {
+        async function parsePdfSmartPrice(file) {
             const arrayBuffer = await file.arrayBuffer();
             const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
@@ -262,12 +262,11 @@
 
             for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
                 const page = await pdf.getPage(pageNum);
-                const viewport = page.getViewport({ scale: 1.0 });
                 const textContent = await page.getTextContent();
-
-                // Group text items by Y-coordinate
-                const yTolerance = 3.5;
-                let rowsByY = [];
+                
+                // Group by Y-position
+                const yTolerance = 4.0;
+                let rows = [];
 
                 textContent.items.forEach(item => {
                     const str = item.str.trim();
@@ -276,7 +275,6 @@
                     const x = item.transform[4];
                     const y = item.transform[5];
 
-                    // Meta extraction
                     if (str.includes("ARAZ") || str.includes("SUPERMARKET")) supplierName = "ARAZ SUPERMARKET MMC";
                     if (str.match(/\d{2}\.\d{2}\.\d{4}/)) {
                         const m = str.match(/\d{2}\.\d{2}\.\d{4}/);
@@ -284,75 +282,77 @@
                     }
                     if (str.match(/MT\d+/i)) invoiceNo = str;
 
-                    let existingRow = rowsByY.find(r => Math.abs(r.y - y) < yTolerance);
-                    if (!existingRow) {
-                        existingRow = { y: y, items: [] };
-                        rowsByY.push(existingRow);
+                    let row = rows.find(r => Math.abs(r.y - y) < yTolerance);
+                    if (!row) {
+                        row = { y: y, items: [] };
+                        rows.push(row);
                     }
-                    existingRow.items.push({ x: x, str: str });
+                    row.items.push({ x: x, str: str });
                 });
 
-                // Sort rows top-to-bottom
-                rowsByY.sort((a, b) => b.y - a.y);
+                rows.sort((a, b) => b.y - a.y);
 
-                rowsByY.forEach(row => {
-                    row.items.sort((a, b) => a.x - b.x);
-                    const rowText = row.items.map(i => i.str).join(' ');
+                rows.forEach(r => {
+                    r.items.sort((a, b) => a.x - b.x);
+                    const lineText = r.items.map(i => i.str).join(' ');
 
-                    // Filter out non-product lines
                     if (
-                        rowText.includes("VÖEN") || 
-                        rowText.includes("Seriya") || 
-                        rowText.includes("Tarix") || 
-                        rowText.includes("Sıra") || 
-                        rowText.includes("Cəmi") || 
-                        rowText.includes("Yekun") || 
-                        rowText.includes("Səhifə") ||
-                        rowText.includes("1 2 3 4") ||
-                        rowText.match(/^\d+$/)
+                        lineText.includes("VÖEN") || lineText.includes("Seriya") || 
+                        lineText.includes("Sıra") || lineText.includes("Cəmi") || 
+                        lineText.includes("Yekun") || lineText.includes("1 2 3 4") ||
+                        lineText.match(/^[\d\.\s]+$/)
                     ) {
                         return;
                     }
 
-                    // Extract numerical values at the end of the line
-                    const numTokens = [];
-                    const textTokens = [];
+                    // Separate words and numbers
+                    let textParts = [];
+                    let numbers = [];
 
-                    row.items.forEach(item => {
-                        const cleanedVal = item.str.replace(',', '.');
-                        if (!isNaN(cleanedVal) && cleanedVal !== '') {
-                            numTokens.push(parseFloat(cleanedVal));
+                    r.items.forEach(item => {
+                        const val = item.str.replace(',', '.');
+                        if (!isNaN(val) && val !== '') {
+                            numbers.push(parseFloat(val));
                         } else {
-                            textTokens.push(item.str);
+                            textParts.push(item.str);
                         }
                     });
 
-                    let productName = textTokens.join(' ').replace(/^\d+\s+/, '').trim();
-
-                    // Cleanup product name
-                    productName = productName
-                        .replace(/^(\d+\.?\d*|\d{2}\.\d{2}\.\d{4}|VÖEN.*)\s+/, '')
+                    let rawName = textParts.join(' ');
+                    
+                    // Clean product name duplicates ("ƏDƏD ƏDƏD", prefixes, codes)
+                    let cleanTitle = rawName
+                        .replace(/^\d+\s+/, '')
+                        .replace(/\b(ƏDƏD|KG|KQ)\b/gi, '')
                         .replace(/\s+/g, ' ')
                         .trim();
 
-                    // Unit check
-                    let unit = "ƏDƏD";
-                    if (productName.toLowerCase().endsWith("kg") || productName.toLowerCase().endsWith("kq")) unit = "KQ";
+                    if (cleanTitle.length > 2 && numbers.length >= 1) {
+                        let totalAmount = numbers[numbers.length - 1] || 0;
+                        let unitPrice = numbers.length >= 3 ? numbers[numbers.length - 2] : 0;
+                        let quantity = numbers.length >= 3 ? numbers[numbers.length - 3] : 1;
 
-                    // Validate valid table row
-                    if (numTokens.length >= 2 && productName.length > 2 && !productName.match(/^[\d\.\s]+$/)) {
-                        let totalAmount = numTokens[numTokens.length - 1] || 0;
-                        let unitPrice = numTokens[numTokens.length - 2] || 0;
-                        let quantity = numTokens[numTokens.length - 3] || 1;
+                        // Fix: If quantity looks like tax percentage (e.g. 0.0575, 0.0197), reset quantity
+                        if (quantity < 0.1 && totalAmount > 0) {
+                            quantity = 1;
+                        }
 
-                        if (totalAmount === 0 && unitPrice > 0) totalAmount = unitPrice * quantity;
+                        // Auto Calculate Unit Price if it is 0.0000
+                        if (unitPrice === 0 && totalAmount > 0 && quantity > 0) {
+                            unitPrice = totalAmount / quantity;
+                        }
+
+                        let unit = "ƏDƏD";
+                        if (cleanTitle.toLowerCase().includes("kg") || cleanTitle.toLowerCase().includes("xiyar") || cleanTitle.toLowerCase().includes("sogan") || cleanTitle.toLowerCase().includes("pomidor")) {
+                            unit = "KG";
+                        }
 
                         masterData.push({
                             id: Date.now() + Math.random(),
                             date: invoiceDate,
                             invoiceNo: invoiceNo,
                             supplier: supplierName,
-                            productName: productName,
+                            productName: cleanTitle,
                             unit: unit,
                             quantity: quantity,
                             unitPrice: unitPrice,
@@ -380,6 +380,8 @@
                     let qty = parseFloat(numbers[0]) || 1;
                     let price = parseFloat(numbers[1]) || 0;
                     let total = parseFloat(numbers[2]) || (qty * price);
+
+                    if (price === 0 && total > 0 && qty > 0) price = total / qty;
 
                     masterData.push({
                         id: Date.now() + Math.random(),
@@ -453,7 +455,7 @@
                         <td class="py-2.5 px-4 font-bold text-slate-900">${item.productName}</td>
                         <td class="py-2.5 px-4 text-center text-slate-500">${item.unit}</td>
                         <td class="py-2.5 px-4 text-right font-mono">${item.quantity}</td>
-                        <td class="py-2.5 px-4 text-right font-mono">${item.unitPrice.toFixed(4)} ₼</td>
+                        <td class="py-2.5 px-4 text-right font-mono font-semibold text-brand-600">${item.unitPrice.toFixed(4)} ₼</td>
                         <td class="py-2.5 px-4 text-right font-semibold text-slate-900 font-mono">${item.totalAmount.toFixed(2)} ₼</td>
                     </tr>
                 `).join('');
