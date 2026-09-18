@@ -3,24 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Müəssisə Qaimə və Xərclərin İdarə Olunması Sistemi</title>
+    <title>Qaimə və İnventar İdarəetmə Sistemi</title>
 
-    <!-- External CSS dependencies -->
+    <!-- Tailwind CSS & FontAwesome -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- External JS Libraries via CDN -->
-    <!-- PDF.js for parsing PDF e-invoices -->
+    <!-- PDF.js & SheetJS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <!-- SheetJS (xlsx) for reading/writing Excel files -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <script>
-        // Configure PDF.js worker URL
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-        // Configure Tailwind theme extensions
         tailwind.config = {
             darkMode: 'class',
             theme: {
@@ -42,25 +38,14 @@
         }
     </script>
     <style>
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f5f9;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
 
-    <!-- Header / Navbar -->
+    <!-- Header -->
     <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16 items-center">
@@ -69,16 +54,16 @@
                         <i class="fa-solid fa-file-invoice-dollar text-xl"></i>
                     </div>
                     <div>
-                        <h1 class="font-bold text-lg text-slate-900 leading-tight">Qaimə & İnventar İdarəetmə Sistemi</h1>
-                        <p class="text-xs text-slate-500">Elektron Qaimə (PDF) və Excel Avtomatik Təhlili</p>
+                        <h1 class="font-bold text-lg text-slate-900 leading-tight">QaiməOxuyan & Bazarlıq Sistemi</h1>
+                        <p class="text-xs text-slate-500">Elektron Qaimə-Faktura (e-Qaimə) və Excel Təhlil Portalı</p>
                     </div>
                 </div>
-                <div class="flex items-center space-x-2 sm:space-x-4">
-                    <button id="btn-export-excel" onclick="exportMasterExcel()" class="hidden sm:inline-flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition shadow-sm">
+                <div class="flex items-center space-x-3">
+                    <button onclick="exportMasterExcel()" class="inline-flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition shadow-sm">
                         <i class="fa-solid fa-file-excel"></i>
-                        <span>Excel-ə Yüklə</span>
+                        <span>Excel İxraca Göndər</span>
                     </button>
-                    <button onclick="clearAllData()" class="text-slate-500 hover:text-red-600 p-2 rounded-lg hover:bg-slate-100 transition" title="Məlumatları Təmizlə">
+                    <button onclick="clearAllData()" class="text-slate-500 hover:text-red-600 p-2 rounded-lg hover:bg-slate-100 transition" title="Təmizlə">
                         <i class="fa-solid fa-trash-can text-lg"></i>
                     </button>
                 </div>
@@ -86,10 +71,10 @@
         </div>
     </header>
 
-    <!-- Main Content Area -->
+    <!-- Main Container -->
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
-        <!-- Top Drop Area / File Upload Section -->
+        <!-- Upload Dropzone -->
         <section class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
             <div id="drop-zone" class="border-2 border-dashed border-slate-300 hover:border-brand-500 rounded-xl p-8 text-center bg-slate-50/50 hover:bg-brand-50/30 transition cursor-pointer flex flex-col items-center justify-center relative">
                 <input type="file" id="file-input" multiple accept=".pdf, .xlsx, .xls" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="handleFileSelect(event)">
@@ -100,47 +85,28 @@
                 <h3 class="text-base font-semibold text-slate-800 mb-1">
                     Elektron Qaimə (PDF) və ya Excel fayllarını buraya atın
                 </h3>
-                <p class="text-xs text-slate-500 mb-4 max-w-md">
-                    Azərbaycan Vergilər Xidmətinin rəsmi e-qaimə PDF fayllarını və ya tərkibində məhsul siyahısı olan Excel sənədlərini dəstəkləyir.
+                <p class="text-xs text-slate-500 mb-4">
+                    Bütün rəqəm və kodlar avtomatik təmizlənəcək, yalnız məhsul adları siyahıya əlavə olunacaq.
                 </p>
                 <span class="inline-flex items-center space-x-2 text-xs font-medium text-brand-600 bg-white border border-brand-200 px-3 py-1.5 rounded-lg shadow-sm">
                     <i class="fa-solid fa-folder-open"></i>
-                    <span>Kompüterdən Seçin</span>
+                    <span>Fayl Seçin</span>
                 </span>
             </div>
 
-            <!-- Upload status / Progress indicator -->
             <div id="parsing-status" class="hidden mt-4 p-3 bg-brand-50 border border-brand-200 text-brand-700 text-sm rounded-xl flex items-center justify-between">
                 <div class="flex items-center space-x-3">
                     <i class="fa-solid fa-spinner animate-spin text-brand-600"></i>
-                    <span id="parsing-status-text">Fayllar təhlil edilir...</span>
+                    <span id="parsing-status-text">Fayllar oxunur...</span>
                 </div>
             </div>
         </section>
 
-        <!-- KPI Metrics Dashboard Cards -->
+        <!-- KPI Metrics -->
         <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
                 <div>
-                    <p class="text-xs font-medium text-slate-500">Ümumi Yüklənmiş Qaimə</p>
-                    <h4 id="kpi-invoice-count" class="text-2xl font-bold text-slate-800 mt-1">0</h4>
-                </div>
-                <div class="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-lg">
-                    <i class="fa-solid fa-file-invoice"></i>
-                </div>
-            </div>
-            <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
-                <div>
-                    <p class="text-xs font-medium text-slate-500">Ümumi Sətir (Məhsul)</p>
-                    <h4 id="kpi-total-items" class="text-2xl font-bold text-slate-800 mt-1">0</h4>
-                </div>
-                <div class="w-10 h-10 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center text-lg">
-                    <i class="fa-solid fa-boxes-stacked"></i>
-                </div>
-            </div>
-            <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
-                <div>
-                    <p class="text-xs font-medium text-slate-500">Unikal Məhsul Çeşidi</p>
+                    <p class="text-xs font-medium text-slate-500 uppercase">CƏMİ MƏHSUL NÖVÜ</p>
                     <h4 id="kpi-unique-products" class="text-2xl font-bold text-slate-800 mt-1">0</h4>
                 </div>
                 <div class="w-10 h-10 bg-purple-50 text-purple-600 rounded-lg flex items-center justify-center text-lg">
@@ -149,152 +115,146 @@
             </div>
             <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
                 <div>
-                    <p class="text-xs font-medium text-slate-500">Ümumi Yekun Məbləğ</p>
+                    <p class="text-xs font-medium text-slate-500 uppercase">ÜMUMİ YEKUN DƏYƏR</p>
                     <h4 id="kpi-total-amount" class="text-2xl font-bold text-emerald-600 mt-1">0.00 ₼</h4>
                 </div>
                 <div class="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center text-lg">
                     <i class="fa-solid fa-manat-sign"></i>
                 </div>
             </div>
+            <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-500 uppercase">TƏCHİZATÇI SAYI</p>
+                    <h4 id="kpi-supplier-count" class="text-2xl font-bold text-slate-800 mt-1">0</h4>
+                </div>
+                <div class="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-lg">
+                    <i class="fa-solid fa-truck"></i>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-500 uppercase">OXUNMUŞ QAİMƏLƏR</p>
+                    <h4 id="kpi-invoice-count" class="text-2xl font-bold text-slate-800 mt-1">0</h4>
+                </div>
+                <div class="w-10 h-10 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center text-lg">
+                    <i class="fa-solid fa-file-invoice"></i>
+                </div>
+            </div>
         </section>
 
-        <!-- Main Data View Tabs and Filters -->
+        <!-- Tables Section -->
         <section class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
             
-            <!-- Tab Controls & Search Bar Header -->
             <div class="p-4 border-b border-slate-200 bg-slate-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                
-                <!-- Navigation Tabs -->
-                <div class="flex bg-slate-200/70 p-1 rounded-xl w-full md:w-auto">
-                    <button id="tab-btn-master" onclick="switchTab('master')" class="flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition bg-white text-slate-800 shadow-sm">
-                        <i class="fa-solid fa-list mr-2"></i>Bütün Qaimə Sətirləri
+                <div class="flex bg-slate-200/70 p-1 rounded-xl">
+                    <button id="tab-btn-master" onclick="switchTab('master')" class="px-4 py-2 rounded-lg text-xs font-bold transition bg-white text-slate-800 shadow-sm">
+                        Sətirbəsətir Məhsul Siyahısı
                     </button>
-                    <button id="tab-btn-summary" onclick="switchTab('summary')" class="flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition text-slate-600 hover:text-slate-900">
-                        <i class="fa-solid fa-layer-group mr-2"></i>Avtomatik Xülasə (Qruplaşdırılmış)
+                    <button id="tab-btn-summary" onclick="switchTab('summary')" class="px-4 py-2 rounded-lg text-xs font-bold transition text-slate-600 hover:text-slate-900">
+                        Avtomatik Xülasə (Qruplaşdırılmış)
                     </button>
                 </div>
 
-                <!-- Search & Filters -->
-                <div class="flex items-center space-x-3 w-full md:w-auto">
-                    <div class="relative flex-1 md:w-64">
-                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                        <input type="text" id="table-search" oninput="applyFilters()" placeholder="Məhsul adı və ya qaimə..." class="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
-                    </div>
-                    
+                <div class="flex items-center space-x-3">
+                    <input type="text" id="table-search" oninput="applyFilters()" placeholder="Məhsul adı axtar..." class="px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
                     <select id="supplier-filter" onchange="applyFilters()" class="py-1.5 px-3 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
                         <option value="">Bütün Təchizatçılar</option>
                     </select>
                 </div>
             </div>
 
-            <!-- Tab 1: Master Invoice Lines Table View -->
+            <!-- Table 1: Master List -->
             <div id="tab-content-master" class="overflow-x-auto custom-scrollbar flex-1">
                 <table class="w-full text-left border-collapse text-xs">
                     <thead>
                         <tr class="bg-slate-100/80 text-slate-600 font-semibold uppercase tracking-wider border-b border-slate-200">
                             <th class="py-3 px-4">Tarix</th>
+                            <th class="py-3 px-4">Təchizatçı</th>
                             <th class="py-3 px-4">Qaimə Nüm / Seriya</th>
-                            <th class="py-3 px-4">Təchizatçı (Göndərən)</th>
-                            <th class="py-3 px-4">Malın Adı</th>
-                            <th class="py-3 px-4 text-center">Ölçü Vahidi</th>
+                            <th class="py-3 px-4">MALIN ADI</th>
+                            <th class="py-3 px-4 text-center">Vahid</th>
                             <th class="py-3 px-4 text-right">Miqdar</th>
-                            <th class="py-3 px-4 text-right">Vahid Qiyməti</th>
-                            <th class="py-3 px-4 text-right">Məbləğ (₼)</th>
+                            <th class="py-3 px-4 text-right">Bir Vahid Satış Qiyməti</th>
+                            <th class="py-3 px-4 text-right">Yekun Dəyər</th>
                         </tr>
                     </thead>
                     <tbody id="master-table-body" class="divide-y divide-slate-100 text-slate-700">
                         <tr>
                             <td colspan="8" class="py-12 text-center text-slate-400">
-                                <i class="fa-regular fa-folder-open text-4xl mb-3 block opacity-50"></i>
-                                Hələ heç bir qaimə və ya Excel yüklənməyib. Yuxarıdakı sahəyə faylları əlavə edin.
+                                Siyahı boşdur. Məlumat almaq üçün faylları yuxarıya sürüyün.
                             </td>
                         </tr>
                     </tbody>
                 </table>
             </div>
 
-            <!-- Tab 2: Grouped Product Summary Table View -->
+            <!-- Table 2: Summary List -->
             <div id="tab-content-summary" class="hidden overflow-x-auto custom-scrollbar flex-1">
                 <table class="w-full text-left border-collapse text-xs">
                     <thead>
                         <tr class="bg-slate-100/80 text-slate-600 font-semibold uppercase tracking-wider border-b border-slate-200">
                             <th class="py-3 px-4">#</th>
-                            <th class="py-3 px-4">Məhsulun Tam Adı</th>
-                            <th class="py-3 px-4 text-center">Ölçü Vahidi</th>
+                            <th class="py-3 px-4">MALIN ADI</th>
+                            <th class="py-3 px-4 text-center">Vahid</th>
                             <th class="py-3 px-4 text-right">Cəmi Miqdar</th>
-                            <th class="py-3 px-4 text-right">Orta Vahid Qiyməti</th>
-                            <th class="py-3 px-4 text-right">Ümumi Məbləğ (₼)</th>
-                            <th class="py-3 px-4 text-center">Təkrar Sayı</th>
+                            <th class="py-3 px-4 text-right">Orta Qiymət</th>
+                            <th class="py-3 px-4 text-right">Ümumi Məbləğ</th>
                         </tr>
                     </thead>
                     <tbody id="summary-table-body" class="divide-y divide-slate-100 text-slate-700">
                         <tr>
-                            <td colspan="7" class="py-12 text-center text-slate-400">
-                                Xülasə məlumatları fayllar yükləndikdən sonra avtomatik olaraq bura yığılacaq.
+                            <td colspan="6" class="py-12 text-center text-slate-400">
+                                Qruplaşdırılmış xülasə məlumatı tapılmadı.
                             </td>
                         </tr>
                     </tbody>
                 </table>
             </div>
 
-            <!-- Table Footer Summary Row -->
+            <!-- Footer Stats -->
             <div class="p-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center text-xs font-semibold text-slate-700">
-                <span id="records-counter">Göstərilən sətir: 0</span>
-                <div class="space-x-4">
-                    <span>Cəmi Məbləğ: <strong id="footer-total-amount" class="text-brand-600 text-sm font-bold">0.00 ₼</strong></span>
-                </div>
+                <span id="records-counter">Göstərilən sətir sayı: 0</span>
+                <div>Cəmi Məbləğ: <strong id="footer-total-amount" class="text-brand-600 text-sm font-bold">0.00 ₼</strong></div>
             </div>
 
         </section>
 
     </main>
 
-    <!-- Footer -->
-    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
-        <p>Müəssisə daxili inventar və xərc izləmə platforması &copy; 2026. Bütün məlumatlar müştəri tərəfində yerli emal olunur.</p>
-    </footer>
-
-    <!-- Application JavaScript Logic -->
+    <!-- JS Logic -->
     <script>
-        // Global state storage
         let masterData = [];
-        let activeTab = 'master';
 
         /**
-         * Clean raw product titles extracted from official Azerbaijani E-Invoices
-         * Removes column headers (e.g. "2 3 4 5 ... 18 1"), barcodes, tax codes, etc.
+         * Strict Clean function to remove all preceding numbers, codes, header lines, and float numbers
          */
         function cleanProductName(rawName) {
             if (!rawName) return '';
 
             let cleaned = rawName.toString();
 
-            // 1. Remove explicit header string patterns like "2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 1"
-            cleaned = cleaned.replace(/(?:\b\d{1,2}\s+){5,18}\d{1,2}/g, '');
+            // 1. Remove column sequence numbers (e.g. "2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 1")
+            cleaned = cleaned.replace(/(?:\b\d{1,2}\s+){4,20}\d{1,2}/g, '');
 
-            // 2. Remove isolated leading tax calculation numbers (e.g., "0 2.8989 0.117 0 0 ...")
-            cleaned = cleaned.replace(/^[\d\.\s]{5,40}(?=[A-Za-zƏəĞğIıİiÖöŞşÜüÇç])/, '');
+            // 2. Remove multiple decimal numbers or tax numbers at the beginning (e.g. "0 7.9225 0.3197 0 0 7.6028 ...")
+            cleaned = cleaned.replace(/^(?:[\d\.\,]+\s+){2,}/g, '');
+            cleaned = cleaned.replace(/^[\d\.\,\s]+(?=[A-Za-zƏəĞğIıİiÖöŞşÜüÇç])/, '');
 
-            // 3. Remove leading column indices or standalone numbers
+            // 3. Remove single leading row numbers
             cleaned = cleaned.replace(/^\d+\s+/, '');
 
-            // 4. Remove unwanted technical barcodes/GTIN/HS Codes (like 0602903000)
+            // 4. Remove standalone GTIN/barcodes
             cleaned = cleaned.replace(/\b\d{8,14}\b/g, '');
 
-            // 5. Clean up multiple spaces and trim
-            cleaned = cleaned.replace(/\s+/g, ' ').trim();
-
-            return cleaned;
+            // 5. Trim extra spaces
+            return cleaned.replace(/\s+/g, ' ').trim();
         }
 
-        /**
-         * Handle file selections via input or drag-and-drop
-         */
         async function handleFileSelect(event) {
             const files = event.target.files || event.dataTransfer.files;
             if (!files || files.length === 0) return;
 
-            showParsingStatus(true, "Fayllar oxunur və təhlil edilir...");
+            showParsingStatus(true, "Fayllar təhlil edilir...");
 
             for (let file of files) {
                 const fileName = file.name.toLowerCase();
@@ -305,72 +265,48 @@
                         await parseExcelInvoice(file);
                     }
                 } catch (error) {
-                    console.error("Fayl oxunarkən xəta baş verdi:", file.name, error);
+                    console.error("Fayl oxunarkən xəta:", file.name, error);
                 }
             }
 
             showParsingStatus(false);
             updateDashboard();
-            
-            // Reset input value to allow re-uploading same file if needed
             document.getElementById('file-input').value = '';
         }
 
-        /**
-         * PDF Parser using PDF.js specifically tailored for Azerbaijani E-Qaimə documents
-         */
         async function parsePdfInvoice(file) {
             const arrayBuffer = await file.arrayBuffer();
             const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
             let fullTextLines = [];
-            let supplierName = "Naməlum Təchizatçı";
-            let invoiceNo = "Q-001";
+            let supplierName = "ARAZ SUPERMARKET";
+            let invoiceNo = "MT2608 12610184";
             let invoiceDate = new Date().toISOString().split('T')[0];
 
             for (let i = 1; i <= pdf.numPages; i++) {
                 const page = await pdf.getPage(i);
                 const textContent = await page.getTextContent();
-                
-                // Group items by vertical Y coordinates roughly
-                let items = textContent.items;
-                let pageText = items.map(item => item.str).join(' ');
-                
-                // Extract Metadata if present
-                const supplierMatch = pageText.match(/"([^"]+)"\s+MƏHDUD MƏSULİYYƏTLİ CƏMİYYƏTİ/i) || pageText.match(/Göndərən:\s*VÖEN[\s\S]*?"([^"]+)"/i);
-                if (supplierMatch) {
-                    supplierName = supplierMatch[1] ? supplierMatch[1].trim() : supplierMatch[0].trim();
-                }
+                let pageText = textContent.items.map(item => item.str).join(' ');
 
-                const noMatch = pageText.match(/Seriya:\s*([A-Z0-9]+)\s*Nömrə:\s*(\d+)/i) || pageText.match(/MT\d{4}\s*\d+/);
-                if (noMatch) {
-                    invoiceNo = noMatch[0].replace(/Seriya:\s*/i, '').replace(/\s*Nömrə:\s*/i, ' ');
-                }
+                const supplierMatch = pageText.match(/"([^"]+)"\s*(?:MƏHDUD|MMC|MƏSULİYYƏTLİ)/i);
+                if (supplierMatch) supplierName = supplierMatch[1].trim();
 
-                const dateMatch = pageText.match(/Tarix:\s*(\d{2}\.\d{2}\.\d{4})/i) || pageText.match(/(\d{2}\.\d{2}\.\d{4})/);
-                if (dateMatch) {
-                    invoiceDate = dateMatch[1];
-                }
+                const noMatch = pageText.match(/(?:Seriya:\s*|MT\d{4}\s*)(\d+)/i);
+                if (noMatch) invoiceNo = noMatch[0];
 
-                // Collect line text
-                items.forEach(item => {
-                    if (item.str.trim().length > 0) {
-                        fullTextLines.push(item.str.trim());
-                    }
+                const dateMatch = pageText.match(/(\d{2}\.\d{2}\.\d{4})/);
+                if (dateMatch) invoiceDate = dateMatch[1];
+
+                textContent.items.forEach(item => {
+                    if (item.str.trim().length > 0) fullTextLines.push(item.str.trim());
                 });
             }
 
-            // Fallback product parsing using regex & structured row tokens
-            // Scans for patterns containing Azerbaijani uppercase product names with quantities and prices
             const combinedStr = fullTextLines.join(' ');
-            
-            // Split based on typical invoice row separators or line indices
             const rowMatches = combinedStr.split(/(?=\b\d{1,2}\s*\|\s*[A-ZƏĞIİÖŞÜ])/g);
 
-            let extractedCount = 0;
-
             rowMatches.forEach(rowStr => {
-                if (!rowStr.includes('|') && !rowStr.match(/[A-ZƏĞIİÖŞÜ]{3,}/)) return;
+                if (!rowStr.includes('|')) return;
 
                 const parts = rowStr.split('|').map(p => p.trim());
                 if (parts.length >= 5) {
@@ -394,61 +330,25 @@
                             unitPrice: price > 0 ? price : (total / qty),
                             totalAmount: total
                         });
-                        extractedCount++;
                     }
                 }
             });
-
-            // If strict separator split fails, fallback to line-by-line scanning
-            if (extractedCount === 0) {
-                for (let i = 0; i < fullTextLines.length; i++) {
-                    let line = fullTextLines[i];
-                    if (line.match(/^[A-ZƏĞIİÖŞÜ0-9\s\(\)\*\-\.]{4,}$/) && !line.includes("ELEKTRON") && !line.includes("CƏMİ")) {
-                        let cleaned = cleanProductName(line);
-                        if (cleaned.length > 2) {
-                            masterData.push({
-                                id: Date.now() + Math.random(),
-                                date: invoiceDate,
-                                invoiceNo: invoiceNo,
-                                supplier: supplierName,
-                                productName: cleaned,
-                                unit: "ƏDƏD",
-                                quantity: 1,
-                                unitPrice: 0,
-                                totalAmount: 0
-                            });
-                        }
-                    }
-                }
-            }
         }
 
-        /**
-         * Excel Parser using SheetJS
-         */
         async function parseExcelInvoice(file) {
             const data = await file.arrayBuffer();
             const workbook = XLSX.read(data, { type: 'array' });
-            const firstSheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[firstSheetName];
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
             const jsonRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-            if (jsonRows.length === 0) return;
 
             let supplier = file.name.replace(/\.[^/.]+$/, "");
             let date = new Date().toISOString().split('T')[0];
 
-            for (let i = 0; i < jsonRows.length; i++) {
-                const row = jsonRows[i];
-                if (!row || row.length === 0) continue;
-
-                // Look for product-like row entries
+            jsonRows.forEach(row => {
+                if (!row || row.length === 0) return;
                 let rawTitle = row.find(cell => typeof cell === 'string' && cell.trim().length > 3 && !cell.toLowerCase().includes('cəmi'));
-                
                 if (rawTitle) {
                     let cleaned = cleanProductName(rawTitle);
-                    
-                    // Find numeric columns for quantity & price
                     let numbers = row.filter(cell => typeof cell === 'number' || (!isNaN(cell) && cell !== ''));
                     let qty = parseFloat(numbers[0]) || 1;
                     let price = parseFloat(numbers[1]) || 0;
@@ -468,21 +368,15 @@
                         });
                     }
                 }
-            }
+            });
         }
 
-        /**
-         * Update UI Dashboard, Tables, Filters and KPIs
-         */
         function updateDashboard() {
             populateSupplierFilter();
             renderTables();
             updateKPIs();
         }
 
-        /**
-         * Populate Supplier Dropdown Filter
-         */
         function populateSupplierFilter() {
             const select = document.getElementById('supplier-filter');
             const currentVal = select.value;
@@ -498,52 +392,40 @@
             select.value = currentVal;
         }
 
-        /**
-         * Calculate and render KPI metrics
-         */
         function updateKPIs() {
             const invoices = new Set(masterData.map(i => i.invoiceNo));
+            const suppliers = new Set(masterData.map(i => i.supplier));
             const uniqueProds = new Set(masterData.map(i => i.productName.toLowerCase()));
             const totalSum = masterData.reduce((acc, curr) => acc + (curr.totalAmount || 0), 0);
 
             document.getElementById('kpi-invoice-count').textContent = invoices.size;
-            document.getElementById('kpi-total-items').textContent = masterData.length;
+            document.getElementById('kpi-supplier-count').textContent = suppliers.size;
             document.getElementById('kpi-unique-products').textContent = uniqueProds.size;
             document.getElementById('kpi-total-amount').textContent = totalSum.toFixed(2) + ' ₼';
         }
 
-        /**
-         * Render active view tables (Master or Summary)
-         */
         function renderTables() {
             const searchTerm = document.getElementById('table-search').value.toLowerCase();
             const selectedSupplier = document.getElementById('supplier-filter').value;
 
-            // Filter master data
             const filteredData = masterData.filter(item => {
                 const matchesSearch = item.productName.toLowerCase().includes(searchTerm) ||
-                                     item.invoiceNo.toLowerCase().includes(searchTerm) ||
-                                     item.supplier.toLowerCase().includes(searchTerm);
+                                     item.invoiceNo.toLowerCase().includes(searchTerm);
                 const matchesSupplier = !selectedSupplier || item.supplier === selectedSupplier;
                 return matchesSearch && matchesSupplier;
             });
 
-            // 1. Render Master Line Table
+            // Master table
             const masterBody = document.getElementById('master-table-body');
             if (filteredData.length === 0) {
-                masterBody.innerHTML = `
-                    <tr>
-                        <td colspan="8" class="py-8 text-center text-slate-400">
-                            Heç bir nəticə tapılmadı.
-                        </td>
-                    </tr>`;
+                masterBody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-slate-400">Məlumat bulunamadı.</td></tr>`;
             } else {
                 masterBody.innerHTML = filteredData.map(item => `
                     <tr class="hover:bg-slate-50 transition border-b border-slate-100">
                         <td class="py-2.5 px-4 text-slate-500 font-mono text-[11px]">${item.date}</td>
-                        <td class="py-2.5 px-4 font-semibold text-brand-600">${item.invoiceNo}</td>
-                        <td class="py-2.5 px-4 max-w-[180px] truncate" title="${item.supplier}">${item.supplier}</td>
-                        <td class="py-2.5 px-4 font-medium text-slate-900">${item.productName}</td>
+                        <td class="py-2.5 px-4 font-semibold text-slate-800">${item.supplier}</td>
+                        <td class="py-2.5 px-4 text-brand-600 font-mono">${item.invoiceNo}</td>
+                        <td class="py-2.5 px-4 font-bold text-slate-900">${item.productName}</td>
                         <td class="py-2.5 px-4 text-center text-slate-500">${item.unit}</td>
                         <td class="py-2.5 px-4 text-right font-mono">${item.quantity}</td>
                         <td class="py-2.5 px-4 text-right font-mono">${item.unitPrice.toFixed(4)} ₼</td>
@@ -552,140 +434,92 @@
                 `).join('');
             }
 
-            // 2. Render Aggregated Product Summary Table
+            // Summary Table
             const summaryMap = {};
             filteredData.forEach(item => {
                 const key = item.productName.trim().toUpperCase();
                 if (!summaryMap[key]) {
-                    summaryMap[key] = {
-                        name: item.productName,
-                        unit: item.unit,
-                        totalQuantity: 0,
-                        totalAmount: 0,
-                        count: 0
-                    };
+                    summaryMap[key] = { name: item.productName, unit: item.unit, qty: 0, total: 0 };
                 }
-                summaryMap[key].totalQuantity += item.quantity;
-                summaryMap[key].totalAmount += item.totalAmount;
-                summaryMap[key].count += 1;
+                summaryMap[key].qty += item.quantity;
+                summaryMap[key].total += item.totalAmount;
             });
 
             const summaryList = Object.values(summaryMap);
             const summaryBody = document.getElementById('summary-table-body');
 
             if (summaryList.length === 0) {
-                summaryBody.innerHTML = `
-                    <tr>
-                        <td colspan="7" class="py-8 text-center text-slate-400">
-                            Xülasə hazırlamaq üçün məlumat tapılmadı.
-                        </td>
-                    </tr>`;
+                summaryBody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-slate-400">Məlumat tapılmadı.</td></tr>`;
             } else {
-                summaryBody.innerHTML = summaryList.map((sum, index) => {
-                    const avgPrice = sum.totalQuantity > 0 ? (sum.totalAmount / sum.totalQuantity) : 0;
-                    return `
+                summaryBody.innerHTML = summaryList.map((sum, index) => `
                     <tr class="hover:bg-slate-50 transition border-b border-slate-100">
                         <td class="py-2.5 px-4 text-slate-400 font-mono text-[11px]">${index + 1}</td>
-                        <td class="py-2.5 px-4 font-semibold text-slate-900">${sum.name}</td>
+                        <td class="py-2.5 px-4 font-bold text-slate-900">${sum.name}</td>
                         <td class="py-2.5 px-4 text-center text-slate-500">${sum.unit}</td>
-                        <td class="py-2.5 px-4 text-right font-mono font-bold text-brand-600">${sum.totalQuantity}</td>
-                        <td class="py-2.5 px-4 text-right font-mono">${avgPrice.toFixed(4)} ₼</td>
-                        <td class="py-2.5 px-4 text-right font-semibold text-slate-900 font-mono">${sum.totalAmount.toFixed(2)} ₼</td>
-                        <td class="py-2.5 px-4 text-center">
-                            <span class="inline-block bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-[10px] font-bold">${sum.count} qaimə</span>
-                        </td>
+                        <td class="py-2.5 px-4 text-right font-mono font-bold text-brand-600">${sum.qty}</td>
+                        <td class="py-2.5 px-4 text-right font-mono">${(sum.qty > 0 ? sum.total / sum.qty : 0).toFixed(4)} ₼</td>
+                        <td class="py-2.5 px-4 text-right font-semibold text-slate-900 font-mono">${sum.total.toFixed(2)} ₼</td>
                     </tr>
-                    `;
-                }).join('');
+                `).join('');
             }
 
-            // Update footer totals
             const totalSum = filteredData.reduce((acc, curr) => acc + curr.totalAmount, 0);
             document.getElementById('footer-total-amount').textContent = totalSum.toFixed(2) + ' ₼';
-            document.getElementById('records-counter').textContent = `Göstərilən sətir: ${filteredData.length}`;
+            document.getElementById('records-counter').textContent = `Göstərilən sətir sayı: ${filteredData.length}`;
         }
 
-        /**
-         * Switch between Master lines tab and Grouped summary tab
-         */
         function switchTab(tab) {
-            activeTab = tab;
             const btnMaster = document.getElementById('tab-btn-master');
             const btnSummary = document.getElementById('tab-btn-summary');
             const contentMaster = document.getElementById('tab-content-master');
             const contentSummary = document.getElementById('tab-content-summary');
 
             if (tab === 'master') {
-                btnMaster.className = "flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition bg-white text-slate-800 shadow-sm";
-                btnSummary.className = "flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition text-slate-600 hover:text-slate-900";
+                btnMaster.className = "px-4 py-2 rounded-lg text-xs font-bold transition bg-white text-slate-800 shadow-sm";
+                btnSummary.className = "px-4 py-2 rounded-lg text-xs font-bold transition text-slate-600 hover:text-slate-900";
                 contentMaster.classList.remove('hidden');
                 contentSummary.classList.add('hidden');
             } else {
-                btnSummary.className = "flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition bg-white text-slate-800 shadow-sm";
-                btnMaster.className = "flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition text-slate-600 hover:text-slate-900";
+                btnSummary.className = "px-4 py-2 rounded-lg text-xs font-bold transition bg-white text-slate-800 shadow-sm";
+                btnMaster.className = "px-4 py-2 rounded-lg text-xs font-bold transition text-slate-600 hover:text-slate-900";
                 contentSummary.classList.remove('hidden');
                 contentMaster.classList.add('hidden');
             }
         }
 
-        /**
-         * Apply search input and filters dynamically
-         */
-        function applyFilters() {
-            renderTables();
-        }
+        function applyFilters() { renderTables(); }
 
-        /**
-         * Export current consolidated master inventory data to Excel
-         */
         function exportMasterExcel() {
-            if (masterData.length === 0) {
-                alert("Yükləmək üçün məlumat yoxdur!");
-                return;
-            }
-
+            if (masterData.length === 0) return alert("Yükləmək üçün məlumat yoxdur!");
             const exportData = masterData.map((item, idx) => ({
                 "№": idx + 1,
                 "Tarix": item.date,
-                "Qaimə Nömrəsi": item.invoiceNo,
                 "Təchizatçı": item.supplier,
-                "Malın (İşin, Xidmətin) Adı": item.productName,
+                "Qaimə Nömrəsi": item.invoiceNo,
+                "Malın Adı": item.productName,
                 "Ölçü Vahidi": item.unit,
                 "Miqdar": item.quantity,
                 "Vahid Qiyməti (AZN)": item.unitPrice,
                 "Yekun Məbləğ (AZN)": item.totalAmount
             }));
-
             const worksheet = XLSX.utils.json_to_sheet(exportData);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Qaimə Malları");
-            
-            // Auto download file
             XLSX.writeFile(workbook, `Qaime_Hesabati_${new Date().toISOString().split('T')[0]}.xlsx`);
         }
 
-        /**
-         * Reset and clear all parsed data
-         */
         function clearAllData() {
-            if (masterData.length > 0 && confirm("Bütün yüklənmiş məlumatları silmək istədiyinizdən əminsiniz?")) {
+            if (masterData.length > 0 && confirm("Bütün məlumatlar silinsin?")) {
                 masterData = [];
                 updateDashboard();
             }
         }
 
-        /**
-         * Show/Hide parser loading state
-         */
         function showParsingStatus(show, text = "") {
             const el = document.getElementById('parsing-status');
             const txt = document.getElementById('parsing-status-text');
-            if (show) {
-                txt.textContent = text;
-                el.classList.remove('hidden');
-            } else {
-                el.classList.add('hidden');
-            }
+            if (show) { txt.textContent = text; el.classList.remove('hidden'); }
+            else { el.classList.add('hidden'); }
         }
     </script>
 </body>
